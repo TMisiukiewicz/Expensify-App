@@ -10,32 +10,32 @@ const expectedMonth = '09';
 const expectedYear = '2024';
 
 describe('CardUtils', () => {
-    it.skip('Test MM/YYYY format for getting expirationDate month and year', () => {
+    it('Test MM/YYYY format for getting expirationDate month and year', () => {
         expect(cardUtils.getMonthFromExpirationDateString(longDateSlashed)).toBe(expectedMonth);
         expect(cardUtils.getYearFromExpirationDateString(longDateSlashed)).toBe(expectedYear);
     });
 
-    it.skip('Test MM-YYYY format for getting expirationDate month and year', () => {
+    it('Test MM-YYYY format for getting expirationDate month and year', () => {
         expect(cardUtils.getMonthFromExpirationDateString(longDateHyphen)).toBe(expectedMonth);
         expect(cardUtils.getYearFromExpirationDateString(longDateHyphen)).toBe(expectedYear);
     });
 
-    it.skip('Test MMYYYY format for getting expirationDate month and year', () => {
+    it('Test MMYYYY format for getting expirationDate month and year', () => {
         expect(cardUtils.getMonthFromExpirationDateString(longDate)).toBe(expectedMonth);
         expect(cardUtils.getYearFromExpirationDateString(longDate)).toBe(expectedYear);
     });
 
-    it.skip('Test MM/YY format for getting expirationDate month and year', () => {
+    it('Test MM/YY format for getting expirationDate month and year', () => {
         expect(cardUtils.getMonthFromExpirationDateString(shortDateSlashed)).toBe(expectedMonth);
         expect(cardUtils.getYearFromExpirationDateString(shortDateSlashed)).toBe(expectedYear);
     });
 
-    it.skip('Test MM-YY format for getting expirationDate month and year', () => {
+    it('Test MM-YY format for getting expirationDate month and year', () => {
         expect(cardUtils.getMonthFromExpirationDateString(shortDateHyphen)).toBe(expectedMonth);
         expect(cardUtils.getYearFromExpirationDateString(shortDateHyphen)).toBe(expectedYear);
     });
 
-    it.skip('Test MMYY format for getting expirationDate month and year', () => {
+    it('Test MMYY format for getting expirationDate month and year', () => {
         expect(cardUtils.getMonthFromExpirationDateString(shortDate)).toBe(expectedMonth);
         expect(cardUtils.getYearFromExpirationDateString(shortDate)).toBe(expectedYear);
     });
