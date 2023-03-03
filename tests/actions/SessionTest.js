@@ -76,7 +76,7 @@ describe('Session', () => {
 
                 // // When we attempt to fetch the chatList via the API
                 // DeprecatedAPI.Get({returnValueList: 'chatList'});
-                waitForPromisesToResolve();
+                // waitForPromisesToResolve();
             });
 
         // .then(() => {
