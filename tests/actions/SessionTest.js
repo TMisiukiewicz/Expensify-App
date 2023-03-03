@@ -80,11 +80,13 @@ describe('Session', () => {
 
                 // When we attempt to fetch the chatList via the API
                 DeprecatedAPI.Get({returnValueList: 'chatList'});
+                console.log('deprecation');
                 return waitForPromisesToResolve();
             })
             .then(() => {
                 // Then it should fail and reauthenticate the user adding the new authToken to the session
                 // data in Onyx
+                console.log('authtoken here');
                 expect(session.authToken).toBe(TEST_REFRESHED_AUTH_TOKEN);
             });
     });
