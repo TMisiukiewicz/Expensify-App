@@ -31,21 +31,18 @@ describe('Session', () => {
         const TEST_REFRESHED_AUTH_TOKEN = 'refreshedAuthToken';
 
         let credentials;
-        console.log('before connect credentials');
         Onyx.connect({
             key: ONYXKEYS.CREDENTIALS,
             callback: val => credentials = val || {},
         });
 
         let session;
-        console.log('before connect session');
         Onyx.connect({
             key: ONYXKEYS.SESSION,
             callback: val => session = val,
         });
 
         // When we sign in with the test user
-        console.log('before sign in');
         return TestHelper.signInWithTestUser(TEST_USER_ACCOUNT_ID, TEST_USER_LOGIN, 'Password1', TEST_INITIAL_AUTH_TOKEN)
             .then(() => {
                 // Then our re-authentication credentials should be generated and our session data
@@ -56,37 +53,34 @@ describe('Session', () => {
                 expect(session.authToken).toBe(TEST_INITIAL_AUTH_TOKEN);
                 expect(session.accountID).toBe(TEST_USER_ACCOUNT_ID);
                 expect(session.email).toBe(TEST_USER_LOGIN);
-                console.log({credentials, session});
 
                 // At this point we have an authToken. To simulate it expiring we'll just make another
                 // request and mock the response so it returns 407. Once this happens we should attempt
                 // to Re-Authenticate with the stored credentials. Our next call will be to Authenticate
                 // so we will mock that response with a new authToken and then verify that Onyx has our
                 // data.
-                HttpUtils.xhr
+                // HttpUtils.xhr
 
-                    // This will make the call to DeprecatedAPI.Get() below return with an expired session code
-                    .mockImplementationOnce(() => Promise.resolve({
-                        jsonCode: CONST.JSON_CODE.NOT_AUTHENTICATED,
-                    }))
+                //     // This will make the call to DeprecatedAPI.Get() below return with an expired session code
+                //     .mockImplementationOnce(() => Promise.resolve({
+                //         jsonCode: CONST.JSON_CODE.NOT_AUTHENTICATED,
+                //     }))
 
-                    // The next call should be Authenticate since we are reauthenticating
-                    .mockImplementationOnce(() => Promise.resolve({
-                        jsonCode: CONST.JSON_CODE.SUCCESS,
-                        accountID: TEST_USER_ACCOUNT_ID,
-                        authToken: TEST_REFRESHED_AUTH_TOKEN,
-                        email: TEST_USER_LOGIN,
-                    }));
+                //     // The next call should be Authenticate since we are reauthenticating
+                //     .mockImplementationOnce(() => Promise.resolve({
+                //         jsonCode: CONST.JSON_CODE.SUCCESS,
+                //         accountID: TEST_USER_ACCOUNT_ID,
+                //         authToken: TEST_REFRESHED_AUTH_TOKEN,
+                //         email: TEST_USER_LOGIN,
+                //     }));
 
-                // When we attempt to fetch the chatList via the API
-                DeprecatedAPI.Get({returnValueList: 'chatList'});
-                console.log('deprecation');
+                // // When we attempt to fetch the chatList via the API
+                // DeprecatedAPI.Get({returnValueList: 'chatList'});
                 return waitForPromisesToResolve();
             })
             .then(() => {
                 // Then it should fail and reauthenticate the user adding the new authToken to the session
                 // data in Onyx
-                console.log('authtoken here');
                 expect(session.authToken).toBe(TEST_REFRESHED_AUTH_TOKEN);
             });
     });
