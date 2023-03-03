@@ -1,13 +1,14 @@
 import Onyx from 'react-native-onyx';
 import {beforeEach, jest, test} from '@jest/globals';
-import * as DeprecatedAPI from '../../src/libs/deprecatedAPI';
+
+// import * as DeprecatedAPI from '../../src/libs/deprecatedAPI';
 import HttpUtils from '../../src/libs/HttpUtils';
 import waitForPromisesToResolve from '../utils/waitForPromisesToResolve';
 import ONYXKEYS from '../../src/ONYXKEYS';
 import * as TestHelper from '../utils/TestHelper';
-import CONST from '../../src/CONST';
 
-// import PushNotification from '../../src/libs/Notification/PushNotification';
+// import CONST from '../../src/CONST';
+import PushNotification from '../../src/libs/Notification/PushNotification';
 
 // We are mocking this method so that we can later test to see if it was called and what arguments it was called with.
 // We test HttpUtils.xhr() since this means that our API command turned into a network request and isn't only queued.
@@ -86,14 +87,14 @@ describe('Session', () => {
     //         });
     // });
 
-    // test('Push notifications are subscribed after signing in', () => (
-    //     TestHelper.signInWithTestUser()
-    //         .then(() => expect(PushNotification.register).toBeCalled())
-    // ));
+    test('Push notifications are subscribed after signing in', () => (
+        TestHelper.signInWithTestUser()
+            .then(() => expect(PushNotification.register).toBeCalled())
+    ));
 
-    // test('Push notifications are unsubscribed after signing out', () => (
-    //     TestHelper.signInWithTestUser()
-    //         .then(TestHelper.signOutTestUser)
-    //         .then(() => expect(PushNotification.deregister).toBeCalled())
-    // ));
+    test('Push notifications are unsubscribed after signing out', () => (
+        TestHelper.signInWithTestUser()
+            .then(TestHelper.signOutTestUser)
+            .then(() => expect(PushNotification.deregister).toBeCalled())
+    ));
 });
