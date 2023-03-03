@@ -1,7 +1,7 @@
 import * as NumberUtils from '../../src/libs/NumberUtils';
 
 describe('libs/NumberUtils', () => {
-    it.skip('should generate a random 64-bit numeric string', () => {
+    it('should generate a random 64-bit numeric string', () => {
         const id = NumberUtils.rand64();
         expect(typeof id).toBe('string');
         // eslint-disable-next-line no-undef

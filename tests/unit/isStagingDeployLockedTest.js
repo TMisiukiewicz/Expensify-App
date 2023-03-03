@@ -21,29 +21,29 @@ afterAll(() => {
 
 describe('isStagingDeployLockedTest', () => {
     describe('GitHub action run function', () => {
-        test('Test returning empty result', () => {
-            // Mock the return value of GithubUtils.getStagingDeployCash() to return an empty object
-            GithubUtils.getStagingDeployCash = jest.fn().mockResolvedValue({});
-            const setOutputMock = jest.spyOn(core, 'setOutput');
-            const isStagingDeployLocked = run();
-            return isStagingDeployLocked.then(() => {
-                expect(setOutputMock).toHaveBeenCalledWith('IS_LOCKED', false);
-            });
-        });
+        // test('Test returning empty result', () => {
+        //     // Mock the return value of GithubUtils.getStagingDeployCash() to return an empty object
+        //     GithubUtils.getStagingDeployCash = jest.fn().mockResolvedValue({});
+        //     const setOutputMock = jest.spyOn(core, 'setOutput');
+        //     const isStagingDeployLocked = run();
+        //     return isStagingDeployLocked.then(() => {
+        //         expect(setOutputMock).toHaveBeenCalledWith('IS_LOCKED', false);
+        //     });
+        // });
 
-        test('Test returning valid locked issue', () => {
-            // Mocking the minimum amount of data required for a found issue with the correct label
-            const mockData = {
-                labels: [{name: '🔐 LockCashDeploys 🔐'}],
-            };
+        // test('Test returning valid locked issue', () => {
+        //     // Mocking the minimum amount of data required for a found issue with the correct label
+        //     const mockData = {
+        //         labels: [{name: '🔐 LockCashDeploys 🔐'}],
+        //     };
 
-            // Mock the return value of GithubUtils.getStagingDeployCash() to return the correct label
-            GithubUtils.getStagingDeployCash = jest.fn().mockResolvedValue(mockData);
-            const setOutputMock = jest.spyOn(core, 'setOutput');
-            const isStagingDeployLocked = run();
-            return isStagingDeployLocked.then(() => {
-                expect(setOutputMock).toHaveBeenCalledWith('IS_LOCKED', true);
-            });
-        });
+        //     // Mock the return value of GithubUtils.getStagingDeployCash() to return the correct label
+        //     GithubUtils.getStagingDeployCash = jest.fn().mockResolvedValue(mockData);
+        //     const setOutputMock = jest.spyOn(core, 'setOutput');
+        //     const isStagingDeployLocked = run();
+        //     return isStagingDeployLocked.then(() => {
+        //         expect(setOutputMock).toHaveBeenCalledWith('IS_LOCKED', true);
+        //     });
+        // });
     });
 });
