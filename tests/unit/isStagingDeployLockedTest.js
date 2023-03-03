@@ -21,7 +21,7 @@ afterAll(() => {
 
 describe('isStagingDeployLockedTest', () => {
     describe('GitHub action run function', () => {
-        test.skip('Test returning empty result', () => {
+        test('Test returning empty result', () => {
             // Mock the return value of GithubUtils.getStagingDeployCash() to return an empty object
             GithubUtils.getStagingDeployCash = jest.fn().mockResolvedValue({});
             const setOutputMock = jest.spyOn(core, 'setOutput');
@@ -31,7 +31,7 @@ describe('isStagingDeployLockedTest', () => {
             });
         });
 
-        test.skip('Test returning valid locked issue', () => {
+        test('Test returning valid locked issue', () => {
             // Mocking the minimum amount of data required for a found issue with the correct label
             const mockData = {
                 labels: [{name: '🔐 LockCashDeploys 🔐'}],
