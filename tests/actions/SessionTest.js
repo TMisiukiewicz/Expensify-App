@@ -31,22 +31,23 @@ describe('Session', () => {
         const TEST_REFRESHED_AUTH_TOKEN = 'refreshedAuthToken';
 
         let credentials;
+        console.log('before connect credentials');
         Onyx.connect({
             key: ONYXKEYS.CREDENTIALS,
             callback: val => credentials = val || {},
         });
 
         let session;
+        console.log('before connect session');
         Onyx.connect({
             key: ONYXKEYS.SESSION,
             callback: val => session = val,
         });
 
         // When we sign in with the test user
+        console.log('before sign in');
         return TestHelper.signInWithTestUser(TEST_USER_ACCOUNT_ID, TEST_USER_LOGIN, 'Password1', TEST_INITIAL_AUTH_TOKEN)
             .then(() => {
-                console.log({credentials, session});
-
                 // Then our re-authentication credentials should be generated and our session data
                 // have the correct information + initial authToken.
                 expect(credentials.login).toBe(TEST_USER_LOGIN);
@@ -55,6 +56,7 @@ describe('Session', () => {
                 expect(session.authToken).toBe(TEST_INITIAL_AUTH_TOKEN);
                 expect(session.accountID).toBe(TEST_USER_ACCOUNT_ID);
                 expect(session.email).toBe(TEST_USER_LOGIN);
+                console.log({credentials, session});
 
                 // At this point we have an authToken. To simulate it expiring we'll just make another
                 // request and mock the response so it returns 407. Once this happens we should attempt
@@ -83,7 +85,6 @@ describe('Session', () => {
             .then(() => {
                 // Then it should fail and reauthenticate the user adding the new authToken to the session
                 // data in Onyx
-                console.log({session});
                 expect(session.authToken).toBe(TEST_REFRESHED_AUTH_TOKEN);
             });
     });
