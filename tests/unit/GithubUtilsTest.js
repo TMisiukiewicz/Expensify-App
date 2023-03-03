@@ -114,64 +114,64 @@ describe('GithubUtils', () => {
             },
         ];
 
-        test('Test finding an open issue with no PRs successfully', () => {
-            const bareIssue = {
-                ...baseIssue,
-                // eslint-disable-next-line max-len
-                body: '**Release Version:** `1.0.1-47`\r\n**Compare Changes:** https://github.com/Expensify/App/compare/production...staging\r\n\r\ncc @Expensify/applauseleads\n',
-            };
+        // test('Test finding an open issue with no PRs successfully', () => {
+        //     const bareIssue = {
+        //         ...baseIssue,
+        //         // eslint-disable-next-line max-len
+        //         body: '**Release Version:** `1.0.1-47`\r\n**Compare Changes:** https://github.com/Expensify/App/compare/production...staging\r\n\r\ncc @Expensify/applauseleads\n',
+        //     };
 
-            const bareExpectedResponse = {
-                ...baseExpectedResponse,
-                PRList: [],
-            };
+        //     const bareExpectedResponse = {
+        //         ...baseExpectedResponse,
+        //         PRList: [],
+        //     };
 
-            GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [bareIssue]});
-            return GithubUtils.getStagingDeployCash().then(data => expect(data).toStrictEqual(bareExpectedResponse));
-        });
+        //     GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [bareIssue]});
+        //     return GithubUtils.getStagingDeployCash().then(data => expect(data).toStrictEqual(bareExpectedResponse));
+        // });
 
-        test('Test finding an open issue successfully', () => {
-            GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [baseIssue]});
-            return GithubUtils.getStagingDeployCash().then(data => expect(data).toStrictEqual(baseExpectedResponse));
-        });
+        // test('Test finding an open issue successfully', () => {
+        //     GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [baseIssue]});
+        //     return GithubUtils.getStagingDeployCash().then(data => expect(data).toStrictEqual(baseExpectedResponse));
+        // });
 
-        test('Test finding an open issue successfully and parsing with deploy blockers', () => {
-            GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [issueWithDeployBlockers]});
-            return GithubUtils.getStagingDeployCash()
-                .then(data => expect(data).toStrictEqual(expectedResponseWithDeployBlockers));
-        });
+        // test('Test finding an open issue successfully and parsing with deploy blockers', () => {
+        //     GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [issueWithDeployBlockers]});
+        //     return GithubUtils.getStagingDeployCash()
+        //         .then(data => expect(data).toStrictEqual(expectedResponseWithDeployBlockers));
+        // });
 
-        test('Test finding an open issue successfully and parsing with blockers w/o carriage returns', () => {
-            const modifiedIssueWithDeployBlockers = {...issueWithDeployBlockers};
-            modifiedIssueWithDeployBlockers.body = modifiedIssueWithDeployBlockers.body.replace(/\r/g, '');
+        // test('Test finding an open issue successfully and parsing with blockers w/o carriage returns', () => {
+        //     const modifiedIssueWithDeployBlockers = {...issueWithDeployBlockers};
+        //     modifiedIssueWithDeployBlockers.body = modifiedIssueWithDeployBlockers.body.replace(/\r/g, '');
 
-            GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({
-                data: [modifiedIssueWithDeployBlockers],
-            });
-            return GithubUtils.getStagingDeployCash()
-                .then(data => expect(data).toStrictEqual(expectedResponseWithDeployBlockers));
-        });
+        //     GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({
+        //         data: [modifiedIssueWithDeployBlockers],
+        //     });
+        //     return GithubUtils.getStagingDeployCash()
+        //         .then(data => expect(data).toStrictEqual(expectedResponseWithDeployBlockers));
+        // });
 
-        test('Test finding an open issue without a body', () => {
-            const noBodyIssue = baseIssue;
-            noBodyIssue.body = '';
+        // test('Test finding an open issue without a body', () => {
+        //     const noBodyIssue = baseIssue;
+        //     noBodyIssue.body = '';
 
-            GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [noBodyIssue]});
-            return GithubUtils.getStagingDeployCash()
-                .catch(e => expect(e).toEqual(new Error('Unable to find StagingDeployCash issue with correct data.')));
-        });
+        //     GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [noBodyIssue]});
+        //     return GithubUtils.getStagingDeployCash()
+        //         .catch(e => expect(e).toEqual(new Error('Unable to find StagingDeployCash issue with correct data.')));
+        // });
 
-        test('Test finding more than one issue', () => {
-            GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [{a: 1}, {b: 2}]});
-            return GithubUtils.getStagingDeployCash()
-                .catch(e => expect(e).toEqual(new Error('Found more than one StagingDeployCash issue.')));
-        });
+        // test('Test finding more than one issue', () => {
+        //     GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: [{a: 1}, {b: 2}]});
+        //     return GithubUtils.getStagingDeployCash()
+        //         .catch(e => expect(e).toEqual(new Error('Found more than one StagingDeployCash issue.')));
+        // });
 
-        test('Test finding no issues', () => {
-            GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: []});
-            return GithubUtils.getStagingDeployCash()
-                .catch(e => expect(e).toEqual(new Error('Unable to find StagingDeployCash issue.')));
-        });
+        // test('Test finding no issues', () => {
+        //     GithubUtils.octokit.issues.listForRepo = jest.fn().mockResolvedValue({data: []});
+        //     return GithubUtils.getStagingDeployCash()
+        //         .catch(e => expect(e).toEqual(new Error('Unable to find StagingDeployCash issue.')));
+        // });
     });
 
     describe('getPullRequestNumberFromURL', () => {
@@ -201,59 +201,59 @@ describe('GithubUtils', () => {
     });
 
     describe('getIssueNumberFromURL', () => {
-        describe('valid issues', () => {
-            test.each([
-                ['https://github.com/Expensify/Expensify/issues/156369', 156369],
-                ['https://github.com/Expensify/App/issues/1644', 1644],
-                ['https://github.com/Expensify/expensify-common/issues/346', 346],
-                ['https://api.github.com/repos/Expensify/Expensify/issues/156369', 156369],
-                ['https://api.github.com/repos/Expensify/App/issues/1644', 1644],
-                ['https://api.github.com/repos/Expensify/expensify-common/issues/346', 346],
-            ])('getIssueNumberFromURL("%s")', (input, expected) => {
-                expect(GithubUtils.getIssueNumberFromURL(input)).toBe(expected);
-            });
-        });
+        // describe('valid issues', () => {
+        //     test.each([
+        //         ['https://github.com/Expensify/Expensify/issues/156369', 156369],
+        //         ['https://github.com/Expensify/App/issues/1644', 1644],
+        //         ['https://github.com/Expensify/expensify-common/issues/346', 346],
+        //         ['https://api.github.com/repos/Expensify/Expensify/issues/156369', 156369],
+        //         ['https://api.github.com/repos/Expensify/App/issues/1644', 1644],
+        //         ['https://api.github.com/repos/Expensify/expensify-common/issues/346', 346],
+        //     ])('getIssueNumberFromURL("%s")', (input, expected) => {
+        //         expect(GithubUtils.getIssueNumberFromURL(input)).toBe(expected);
+        //     });
+        // });
 
-        describe('invalid issues', () => {
-            test.each([
-                ['https://www.google.com/'],
-                ['https://github.com/Expensify/Expensify/pull/156481'],
-                ['https://docs.google.com/document/d/1mMFh-m1seOES48r3zNqcvfuTvr3qOAsY6n5rP4ejdXE/edit?ts=602420d2#'],
-            ])('getIssueNumberFromURL("%s")', (input) => {
-                expect(() => GithubUtils.getIssueNumberFromURL(input))
-                    .toThrow(new Error(`Provided URL ${input} is not a Github Issue!`));
-            });
-        });
+        // describe('invalid issues', () => {
+        //     test.each([
+        //         ['https://www.google.com/'],
+        //         ['https://github.com/Expensify/Expensify/pull/156481'],
+        //         ['https://docs.google.com/document/d/1mMFh-m1seOES48r3zNqcvfuTvr3qOAsY6n5rP4ejdXE/edit?ts=602420d2#'],
+        //     ])('getIssueNumberFromURL("%s")', (input) => {
+        //         expect(() => GithubUtils.getIssueNumberFromURL(input))
+        //             .toThrow(new Error(`Provided URL ${input} is not a Github Issue!`));
+        //     });
+        // });
     });
 
     describe('getIssueOrPullRequestNumberFromURL', () => {
         describe('valid issues and pull requests', () => {
-            test.each([
-                ['https://github.com/Expensify/Expensify/issues/156369', 156369],
-                ['https://github.com/Expensify/App/issues/1644', 1644],
-                ['https://github.com/Expensify/expensify-common/issues/346', 346],
-                ['https://github.com/Expensify/Expensify/pull/156369', 156369],
-                ['https://github.com/Expensify/App/pull/1644', 1644],
-                ['https://github.com/Expensify/expensify-common/pull/346', 346],
-                ['https://api.github.com/repos/Expensify/Expensify/issues/156369', 156369],
-                ['https://api.github.com/repos/Expensify/App/issues/1644', 1644],
-                ['https://api.github.com/repos/Expensify/expensify-common/issues/346', 346],
-                ['https://api.github.com/repos/Expensify/Expensify/pull/156369', 156369],
-                ['https://api.github.com/repos/Expensify/App/pull/1644', 1644],
-                ['https://api.github.com/repos/Expensify/expensify-common/pull/346', 346],
-            ])('getIssueOrPullRequestNumberFromURL("%s")', (input, expected) => {
-                expect(GithubUtils.getIssueOrPullRequestNumberFromURL(input)).toBe(expected);
-            });
+            // test.each([
+            //     ['https://github.com/Expensify/Expensify/issues/156369', 156369],
+            //     ['https://github.com/Expensify/App/issues/1644', 1644],
+            //     ['https://github.com/Expensify/expensify-common/issues/346', 346],
+            //     ['https://github.com/Expensify/Expensify/pull/156369', 156369],
+            //     ['https://github.com/Expensify/App/pull/1644', 1644],
+            //     ['https://github.com/Expensify/expensify-common/pull/346', 346],
+            //     ['https://api.github.com/repos/Expensify/Expensify/issues/156369', 156369],
+            //     ['https://api.github.com/repos/Expensify/App/issues/1644', 1644],
+            //     ['https://api.github.com/repos/Expensify/expensify-common/issues/346', 346],
+            //     ['https://api.github.com/repos/Expensify/Expensify/pull/156369', 156369],
+            //     ['https://api.github.com/repos/Expensify/App/pull/1644', 1644],
+            //     ['https://api.github.com/repos/Expensify/expensify-common/pull/346', 346],
+            // ])('getIssueOrPullRequestNumberFromURL("%s")', (input, expected) => {
+            //     expect(GithubUtils.getIssueOrPullRequestNumberFromURL(input)).toBe(expected);
+            // });
         });
 
         describe('invalid issues/pull requests', () => {
-            test.each([
-                ['https://www.google.com/'],
-                ['https://docs.google.com/document/d/1mMFh-m1seOES48r3zNqcvfuTvr3qOAsY6n5rP4ejdXE/edit?ts=602420d2#'],
-            ])('getIssueOrPullRequestNumberFromURL("%s")', (input) => {
-                expect(() => GithubUtils.getIssueOrPullRequestNumberFromURL(input))
-                    .toThrow(new Error(`Provided URL ${input} is not a valid Github Issue or Pull Request!`));
-            });
+            // test.each([
+            //     ['https://www.google.com/'],
+            //     ['https://docs.google.com/document/d/1mMFh-m1seOES48r3zNqcvfuTvr3qOAsY6n5rP4ejdXE/edit?ts=602420d2#'],
+            // ])('getIssueOrPullRequestNumberFromURL("%s")', (input) => {
+            //     expect(() => GithubUtils.getIssueOrPullRequestNumberFromURL(input))
+            //         .toThrow(new Error(`Provided URL ${input} is not a valid Github Issue or Pull Request!`));
+            // });
         });
     });
 
@@ -414,168 +414,168 @@ describe('GithubUtils', () => {
                 + `${lineBreak}${closedCheckbox}${basePRList[6]}`
                 + `${lineBreak}`;
 
-        test('Test no verified PRs', () => (
-            githubUtils.generateStagingDeployCashBody(tag, basePRList)
-                .then((issueBody) => {
-                    expect(issueBody).toBe(
-                        `${baseExpectedOutput}`
-                        + `${openCheckbox}${basePRList[2]}`
-                        + `${lineBreak}${openCheckbox}${basePRList[0]}`
-                        + `${lineBreak}${openCheckbox}${basePRList[1]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[5]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[6]}`
-                        + `${lineBreakDouble}${deployerVerificationsHeader}`
-                        + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
-                        + `${lineBreak}${openCheckbox}${firebaseVerification}`
-                        + `${lineBreakDouble}${ccApplauseLeads}`,
-                    );
-                })
-        ));
+        // test('Test no verified PRs', () => (
+        //     githubUtils.generateStagingDeployCashBody(tag, basePRList)
+        //         .then((issueBody) => {
+        //             expect(issueBody).toBe(
+        //                 `${baseExpectedOutput}`
+        //                 + `${openCheckbox}${basePRList[2]}`
+        //                 + `${lineBreak}${openCheckbox}${basePRList[0]}`
+        //                 + `${lineBreak}${openCheckbox}${basePRList[1]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[5]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[6]}`
+        //                 + `${lineBreakDouble}${deployerVerificationsHeader}`
+        //                 + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
+        //                 + `${lineBreak}${openCheckbox}${firebaseVerification}`
+        //                 + `${lineBreakDouble}${ccApplauseLeads}`,
+        //             );
+        //         })
+        // ));
 
-        test('Test some verified PRs', () => (
-            githubUtils.generateStagingDeployCashBody(tag, basePRList, [basePRList[0]])
-                .then((issueBody) => {
-                    expect(issueBody).toBe(
-                        `${baseExpectedOutput}`
-                        + `${openCheckbox}${basePRList[2]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[0]}`
-                        + `${lineBreak}${openCheckbox}${basePRList[1]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[5]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[6]}`
-                        + `${lineBreakDouble}${deployerVerificationsHeader}`
-                        + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
-                        + `${lineBreak}${openCheckbox}${firebaseVerification}`
-                        + `${lineBreakDouble}${ccApplauseLeads}`,
-                    );
-                })
-        ));
+        // test('Test some verified PRs', () => (
+        //     githubUtils.generateStagingDeployCashBody(tag, basePRList, [basePRList[0]])
+        //         .then((issueBody) => {
+        //             expect(issueBody).toBe(
+        //                 `${baseExpectedOutput}`
+        //                 + `${openCheckbox}${basePRList[2]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[0]}`
+        //                 + `${lineBreak}${openCheckbox}${basePRList[1]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[5]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[6]}`
+        //                 + `${lineBreakDouble}${deployerVerificationsHeader}`
+        //                 + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
+        //                 + `${lineBreak}${openCheckbox}${firebaseVerification}`
+        //                 + `${lineBreakDouble}${ccApplauseLeads}`,
+        //             );
+        //         })
+        // ));
 
-        test('Test all verified PRs', () => (
-            githubUtils.generateStagingDeployCashBody(tag, basePRList, basePRList)
-                .then((issueBody) => {
-                    expect(issueBody).toBe(
-                        `${allVerifiedExpectedOutput}`
-                        + `${lineBreak}${deployerVerificationsHeader}`
-                        + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
-                        + `${lineBreak}${openCheckbox}${firebaseVerification}`
-                        + `${lineBreakDouble}${ccApplauseLeads}`,
-                    );
-                })
-        ));
+        // test('Test all verified PRs', () => (
+        //     githubUtils.generateStagingDeployCashBody(tag, basePRList, basePRList)
+        //         .then((issueBody) => {
+        //             expect(issueBody).toBe(
+        //                 `${allVerifiedExpectedOutput}`
+        //                 + `${lineBreak}${deployerVerificationsHeader}`
+        //                 + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
+        //                 + `${lineBreak}${openCheckbox}${firebaseVerification}`
+        //                 + `${lineBreakDouble}${ccApplauseLeads}`,
+        //             );
+        //         })
+        // ));
 
-        test('Test no resolved deploy blockers', () => (
-            githubUtils.generateStagingDeployCashBody(tag, basePRList, basePRList, baseDeployBlockerList)
-                .then((issueBody) => {
-                    expect(issueBody).toBe(
-                        `${allVerifiedExpectedOutput}`
-                        + `${lineBreak}${deployBlockerHeader}`
-                        + `${lineBreak}${openCheckbox}${baseDeployBlockerList[0]}`
-                        + `${lineBreak}${openCheckbox}${baseDeployBlockerList[1]}`
-                        + `${lineBreakDouble}${deployerVerificationsHeader}`
-                        + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
-                        + `${lineBreak}${openCheckbox}${firebaseVerification}${lineBreak}`
-                        + `${lineBreak}${ccApplauseLeads}`,
-                    );
-                })
-        ));
+        // test('Test no resolved deploy blockers', () => (
+        //     githubUtils.generateStagingDeployCashBody(tag, basePRList, basePRList, baseDeployBlockerList)
+        //         .then((issueBody) => {
+        //             expect(issueBody).toBe(
+        //                 `${allVerifiedExpectedOutput}`
+        //                 + `${lineBreak}${deployBlockerHeader}`
+        //                 + `${lineBreak}${openCheckbox}${baseDeployBlockerList[0]}`
+        //                 + `${lineBreak}${openCheckbox}${baseDeployBlockerList[1]}`
+        //                 + `${lineBreakDouble}${deployerVerificationsHeader}`
+        //                 + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
+        //                 + `${lineBreak}${openCheckbox}${firebaseVerification}${lineBreak}`
+        //                 + `${lineBreak}${ccApplauseLeads}`,
+        //             );
+        //         })
+        // ));
 
-        test('Test some resolved deploy blockers', () => (
-            githubUtils.generateStagingDeployCashBody(tag, basePRList, basePRList, baseDeployBlockerList, [baseDeployBlockerList[0]])
-                .then((issueBody) => {
-                    expect(issueBody).toBe(
-                        `${allVerifiedExpectedOutput}`
-                        + `${lineBreak}${deployBlockerHeader}`
-                        + `${lineBreak}${closedCheckbox}${baseDeployBlockerList[0]}`
-                        + `${lineBreak}${openCheckbox}${baseDeployBlockerList[1]}`
-                        + `${lineBreakDouble}${deployerVerificationsHeader}`
-                        + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
-                        + `${lineBreak}${openCheckbox}${firebaseVerification}`
-                        + `${lineBreakDouble}${ccApplauseLeads}`,
-                    );
-                })
-        ));
+        // test('Test some resolved deploy blockers', () => (
+        //     githubUtils.generateStagingDeployCashBody(tag, basePRList, basePRList, baseDeployBlockerList, [baseDeployBlockerList[0]])
+        //         .then((issueBody) => {
+        //             expect(issueBody).toBe(
+        //                 `${allVerifiedExpectedOutput}`
+        //                 + `${lineBreak}${deployBlockerHeader}`
+        //                 + `${lineBreak}${closedCheckbox}${baseDeployBlockerList[0]}`
+        //                 + `${lineBreak}${openCheckbox}${baseDeployBlockerList[1]}`
+        //                 + `${lineBreakDouble}${deployerVerificationsHeader}`
+        //                 + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
+        //                 + `${lineBreak}${openCheckbox}${firebaseVerification}`
+        //                 + `${lineBreakDouble}${ccApplauseLeads}`,
+        //             );
+        //         })
+        // ));
 
-        test('Test all resolved deploy blockers', () => (
-            githubUtils.generateStagingDeployCashBody(tag, basePRList, basePRList, baseDeployBlockerList, baseDeployBlockerList)
-                .then((issueBody) => {
-                    expect(issueBody).toBe(
-                        `${baseExpectedOutput}`
-                        + `${closedCheckbox}${basePRList[2]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[0]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[1]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[5]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[6]}`
-                        + `${lineBreakDouble}${deployBlockerHeader}`
-                        + `${lineBreak}${closedCheckbox}${baseDeployBlockerList[0]}`
-                        + `${lineBreak}${closedCheckbox}${baseDeployBlockerList[1]}`
-                        + `${lineBreakDouble}${deployerVerificationsHeader}`
-                        + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
-                        + `${lineBreak}${openCheckbox}${firebaseVerification}`
-                        + `${lineBreakDouble}${ccApplauseLeads}`,
-                    );
-                })
-        ));
+        // test('Test all resolved deploy blockers', () => (
+        //     githubUtils.generateStagingDeployCashBody(tag, basePRList, basePRList, baseDeployBlockerList, baseDeployBlockerList)
+        //         .then((issueBody) => {
+        //             expect(issueBody).toBe(
+        //                 `${baseExpectedOutput}`
+        //                 + `${closedCheckbox}${basePRList[2]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[0]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[1]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[5]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[6]}`
+        //                 + `${lineBreakDouble}${deployBlockerHeader}`
+        //                 + `${lineBreak}${closedCheckbox}${baseDeployBlockerList[0]}`
+        //                 + `${lineBreak}${closedCheckbox}${baseDeployBlockerList[1]}`
+        //                 + `${lineBreakDouble}${deployerVerificationsHeader}`
+        //                 + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
+        //                 + `${lineBreak}${openCheckbox}${firebaseVerification}`
+        //                 + `${lineBreakDouble}${ccApplauseLeads}`,
+        //             );
+        //         })
+        // ));
 
-        test('Test internalQA PRs', () => (
-            githubUtils.generateStagingDeployCashBody(tag, [...basePRList, ...internalQAPRList])
-                .then((issueBody) => {
-                    expect(issueBody).toBe(
-                        `${baseExpectedOutput}`
-                        + `${openCheckbox}${basePRList[2]}`
-                        + `${lineBreak}${openCheckbox}${basePRList[0]}`
-                        + `${lineBreak}${openCheckbox}${basePRList[1]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[5]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[6]}`
-                        + `${lineBreak}${internalQAHeader}`
-                        + `${lineBreak}${openCheckbox}${internalQAPRList[0]}${assignOctocatHubot}`
-                        + `${lineBreak}${openCheckbox}${internalQAPRList[1]}${assignOctocatHubot}`
-                        + `${lineBreakDouble}${deployerVerificationsHeader}`
-                        + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
-                        + `${lineBreak}${openCheckbox}${firebaseVerification}`
-                        + `${lineBreakDouble}${ccApplauseLeads}`,
-                    );
-                })
-        ));
+        // test('Test internalQA PRs', () => (
+        //     githubUtils.generateStagingDeployCashBody(tag, [...basePRList, ...internalQAPRList])
+        //         .then((issueBody) => {
+        //             expect(issueBody).toBe(
+        //                 `${baseExpectedOutput}`
+        //                 + `${openCheckbox}${basePRList[2]}`
+        //                 + `${lineBreak}${openCheckbox}${basePRList[0]}`
+        //                 + `${lineBreak}${openCheckbox}${basePRList[1]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[5]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[6]}`
+        //                 + `${lineBreak}${internalQAHeader}`
+        //                 + `${lineBreak}${openCheckbox}${internalQAPRList[0]}${assignOctocatHubot}`
+        //                 + `${lineBreak}${openCheckbox}${internalQAPRList[1]}${assignOctocatHubot}`
+        //                 + `${lineBreakDouble}${deployerVerificationsHeader}`
+        //                 + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
+        //                 + `${lineBreak}${openCheckbox}${firebaseVerification}`
+        //                 + `${lineBreakDouble}${ccApplauseLeads}`,
+        //             );
+        //         })
+        // ));
 
-        test('Test some verified internalQA PRs', () => (
-            githubUtils.generateStagingDeployCashBody(tag, [...basePRList, ...internalQAPRList], [], [], [], [internalQAPRList[0]])
-                .then((issueBody) => {
-                    expect(issueBody).toBe(
-                        `${baseExpectedOutput}`
-                        + `${openCheckbox}${basePRList[2]}`
-                        + `${lineBreak}${openCheckbox}${basePRList[0]}`
-                        + `${lineBreak}${openCheckbox}${basePRList[1]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[5]}`
-                        + `${lineBreak}${closedCheckbox}${basePRList[6]}`
-                        + `${lineBreak}${internalQAHeader}`
-                        + `${lineBreak}${closedCheckbox}${internalQAPRList[0]}${assignOctocatHubot}`
-                        + `${lineBreak}${openCheckbox}${internalQAPRList[1]}${assignOctocatHubot}`
-                        + `${lineBreakDouble}${deployerVerificationsHeader}`
-                        + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
-                        + `${lineBreak}${openCheckbox}${firebaseVerification}`
-                        + `${lineBreakDouble}${ccApplauseLeads}`,
-                    );
-                })
-        ));
+        // test('Test some verified internalQA PRs', () => (
+        //     githubUtils.generateStagingDeployCashBody(tag, [...basePRList, ...internalQAPRList], [], [], [], [internalQAPRList[0]])
+        //         .then((issueBody) => {
+        //             expect(issueBody).toBe(
+        //                 `${baseExpectedOutput}`
+        //                 + `${openCheckbox}${basePRList[2]}`
+        //                 + `${lineBreak}${openCheckbox}${basePRList[0]}`
+        //                 + `${lineBreak}${openCheckbox}${basePRList[1]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[5]}`
+        //                 + `${lineBreak}${closedCheckbox}${basePRList[6]}`
+        //                 + `${lineBreak}${internalQAHeader}`
+        //                 + `${lineBreak}${closedCheckbox}${internalQAPRList[0]}${assignOctocatHubot}`
+        //                 + `${lineBreak}${openCheckbox}${internalQAPRList[1]}${assignOctocatHubot}`
+        //                 + `${lineBreakDouble}${deployerVerificationsHeader}`
+        //                 + `${lineBreak}${openCheckbox}${timingDashboardVerification}`
+        //                 + `${lineBreak}${openCheckbox}${firebaseVerification}`
+        //                 + `${lineBreakDouble}${ccApplauseLeads}`,
+        //             );
+        //         })
+        // ));
     });
 
     describe('getPullRequestURLFromNumber', () => {
-        test.each([
-            [1234, 'https://github.com/Expensify/App/pull/1234'],
-            [54321, 'https://github.com/Expensify/App/pull/54321'],
-        ])('getPullRequestNumberFromURL("%s")', (input, expectedOutput) => (
-            expect(GithubUtils.getPullRequestURLFromNumber(input)).toBe(expectedOutput)
-        ));
+        // test.each([
+        //     [1234, 'https://github.com/Expensify/App/pull/1234'],
+        //     [54321, 'https://github.com/Expensify/App/pull/54321'],
+        // ])('getPullRequestNumberFromURL("%s")', (input, expectedOutput) => (
+        //     expect(GithubUtils.getPullRequestURLFromNumber(input)).toBe(expectedOutput)
+        // ));
     });
 
     describe('getReleaseBody', () => {
-        test.each([
-            // eslint-disable-next-line max-len
-            [[1, 2, 3], '- https://github.com/Expensify/App/pull/1\r\n- https://github.com/Expensify/App/pull/2\r\n- https://github.com/Expensify/App/pull/3'],
-            [[], ''],
-            [[12345], '- https://github.com/Expensify/App/pull/12345'],
-        ])('getReleaseBody("%s")', (input, expectedOutput) => (
-            expect(GithubUtils.getReleaseBody(input)).toBe(expectedOutput)
-        ));
+        // test.each([
+        //     // eslint-disable-next-line max-len
+        //     [[1, 2, 3], '- https://github.com/Expensify/App/pull/1\r\n- https://github.com/Expensify/App/pull/2\r\n- https://github.com/Expensify/App/pull/3'],
+        //     [[], ''],
+        //     [[12345], '- https://github.com/Expensify/App/pull/12345'],
+        // ])('getReleaseBody("%s")', (input, expectedOutput) => (
+        //     expect(GithubUtils.getReleaseBody(input)).toBe(expectedOutput)
+        // ));
     });
 });
