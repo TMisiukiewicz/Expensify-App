@@ -20,6 +20,8 @@ Onyx.init({
     registerStorageEventListener: () => {},
 });
 
+beforeEach(() => Onyx.clear().then(waitForPromisesToResolve));
+
 describe('Session', () => {
     test('Authenticate is called with saved credentials when a session expires', () => {
         // Given a test user and set of authToken with subscriptions to session and credentials
