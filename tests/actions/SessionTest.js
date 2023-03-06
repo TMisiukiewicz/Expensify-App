@@ -59,31 +59,30 @@ describe('Session', () => {
                 // to Re-Authenticate with the stored credentials. Our next call will be to Authenticate
                 // so we will mock that response with a new authToken and then verify that Onyx has our
                 // data.
-                // HttpUtils.xhr
+                HttpUtils.xhr
 
-                //     // This will make the call to DeprecatedAPI.Get() below return with an expired session code
-                //     .mockImplementationOnce(() => Promise.resolve({
-                //         jsonCode: CONST.JSON_CODE.NOT_AUTHENTICATED,
-                //     }))
+                    // This will make the call to DeprecatedAPI.Get() below return with an expired session code
+                    .mockImplementationOnce(() => Promise.resolve({
+                        jsonCode: CONST.JSON_CODE.NOT_AUTHENTICATED,
+                    }))
 
-                //     // The next call should be Authenticate since we are reauthenticating
-                //     .mockImplementationOnce(() => Promise.resolve({
-                //         jsonCode: CONST.JSON_CODE.SUCCESS,
-                //         accountID: TEST_USER_ACCOUNT_ID,
-                //         authToken: TEST_REFRESHED_AUTH_TOKEN,
-                //         email: TEST_USER_LOGIN,
-                //     }));
+                    // The next call should be Authenticate since we are reauthenticating
+                    .mockImplementationOnce(() => Promise.resolve({
+                        jsonCode: CONST.JSON_CODE.SUCCESS,
+                        accountID: TEST_USER_ACCOUNT_ID,
+                        authToken: TEST_REFRESHED_AUTH_TOKEN,
+                        email: TEST_USER_LOGIN,
+                    }));
 
-                // // When we attempt to fetch the chatList via the API
-                // DeprecatedAPI.Get({returnValueList: 'chatList'});
-                // waitForPromisesToResolve();
+                // When we attempt to fetch the chatList via the API
+                DeprecatedAPI.Get({returnValueList: 'chatList'});
+                waitForPromisesToResolve();
+            })
+            .then(() => {
+            // Then it should fail and reauthenticate the user adding the new authToken to the session
+            // data in Onyx
+                expect(session.authToken).toBe(TEST_REFRESHED_AUTH_TOKEN);
             });
-
-        // .then(() => {
-        //     // Then it should fail and reauthenticate the user adding the new authToken to the session
-        //     // data in Onyx
-        //     expect(session.authToken).toBe(TEST_REFRESHED_AUTH_TOKEN);
-        // });
     });
 
     test('Push notifications are subscribed after signing in', () => (
