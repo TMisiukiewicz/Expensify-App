@@ -120,7 +120,6 @@ function signInWithTestUser(accountID = 1, login = 'test@user.com', password = '
             return waitForPromisesToResolve();
         })
         .then(() => {
-            console.log('originalXhr', originalXhr);
             HttpUtils.xhr = originalXhr;
         });
 }
