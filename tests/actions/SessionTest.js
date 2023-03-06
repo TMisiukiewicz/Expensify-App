@@ -76,11 +76,11 @@ describe('Session', () => {
 
                 // When we attempt to fetch the chatList via the API
                 DeprecatedAPI.Get({returnValueList: 'chatList'});
-                waitForPromisesToResolve();
+                return waitForPromisesToResolve();
             })
             .then(() => {
-            // Then it should fail and reauthenticate the user adding the new authToken to the session
-            // data in Onyx
+                // Then it should fail and reauthenticate the user adding the new authToken to the session
+                // data in Onyx
                 expect(session.authToken).toBe(TEST_REFRESHED_AUTH_TOKEN);
             });
     });
