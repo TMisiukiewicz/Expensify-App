@@ -5,6 +5,7 @@ import * as Session from '../../src/libs/actions/Session';
 import HttpUtils from '../../src/libs/HttpUtils';
 import ONYXKEYS from '../../src/ONYXKEYS';
 import waitForPromisesToResolve from './waitForPromisesToResolve';
+import * as ReportUtils from '../../src/libs/ReportUtils';
 import * as NumberUtils from '../../src/libs/NumberUtils';
 
 /**
@@ -14,11 +15,12 @@ import * as NumberUtils from '../../src/libs/NumberUtils';
  * @returns {Object}
  */
 function buildPersonalDetails(login, accountID, firstName = 'Test') {
+    const avatar = ReportUtils.getDefaultAvatar(login);
     return {
         accountID,
         login,
-        avatar: 'https://d2k5nsl2zxldvw.cloudfront.net/images/avatars/avatar_7.png',
-        avatarThumbnail: 'https://d2k5nsl2zxldvw.cloudfront.net/images/avatars/avatar_7.png',
+        avatar,
+        avatarThumbnail: avatar,
         displayName: `${firstName} User`,
         firstName,
         lastName: 'User',
@@ -43,7 +45,7 @@ function buildPersonalDetails(login, accountID, firstName = 'Test') {
 function signInWithTestUser(accountID = 1, login = 'test@user.com', password = 'Password1', authToken = 'asdfqwerty', firstName = 'Test') {
     const originalXhr = HttpUtils.xhr;
     HttpUtils.xhr = jest.fn();
-    HttpUtils.xhr.mockResolvedValue({
+    HttpUtils.xhr.mockImplementation(() => Promise.resolve({
         onyxData: [
             {
                 onyxMethod: CONST.ONYX.METHOD.MERGE,
@@ -68,7 +70,7 @@ function signInWithTestUser(accountID = 1, login = 'test@user.com', password = '
             },
         ],
         jsonCode: 200,
-    });
+    }));
 
     // Simulate user entering their login and populating the credentials.login
     Session.beginSignIn(login);
@@ -76,7 +78,7 @@ function signInWithTestUser(accountID = 1, login = 'test@user.com', password = '
         .then(() => {
             // Response is the same for calls to Authenticate and BeginSignIn
             HttpUtils.xhr
-                .mockResolvedValue({
+                .mockImplementation(() => Promise.resolve({
                     onyxData: [
                         {
                             onyxMethod: CONST.ONYX.METHOD.MERGE,
@@ -108,19 +110,14 @@ function signInWithTestUser(accountID = 1, login = 'test@user.com', password = '
                             key: ONYXKEYS.BETAS,
                             value: ['all'],
                         },
-                        {
-                            onyxMethod: CONST.ONYX.METHOD.MERGE,
-                            key: ONYXKEYS.NVP_PRIVATE_PUSH_NOTIFICATION_ID,
-                            value: 'randomID',
-                        },
                     ],
                     jsonCode: 200,
-                });
+                }));
             Session.signIn(password);
-            return waitForPromisesToResolve();
-        })
-        .then(() => {
-            HttpUtils.xhr = originalXhr;
+            return waitForPromisesToResolve()
+                .then(() => {
+                    HttpUtils.xhr = originalXhr;
+                });
         });
 }
 
@@ -189,8 +186,8 @@ function buildTestReportComment(actorEmail, created, actorAccountID, actionID = 
 export {
     getGlobalFetchMock,
     signInWithTestUser,
-    signOutTestUser,
     setPersonalDetails,
     buildPersonalDetails,
     buildTestReportComment,
+    signOutTestUser,
 };
