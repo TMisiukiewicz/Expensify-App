@@ -9,6 +9,7 @@ on:
 jobs:
   jest:
     if: ${{ github.actor != 'OSBotify' || github.event_name == 'workflow_call' }}
+    timeout-minutes: 1
     runs-on: ubuntu-latest
     env:
       CI: true
