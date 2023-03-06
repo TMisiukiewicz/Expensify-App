@@ -17,7 +17,7 @@ const mockBuildGradle = `
 
 console.log(mockBuildGradle);
 
-beforeAll(() => {
+beforeEach(() => {
     // Override global console to fix bug with mock-fs: https://github.com/tschaub/mock-fs/issues/234
     global.console = require('../../__mocks__/console');
     console.log('mocked console');
@@ -31,7 +31,7 @@ beforeAll(() => {
 });
 
 // Restore modules to normal
-afterAll(() => {
+afterEach(() => {
     mockFS.restore();
     global.console = require('console');
 });
