@@ -81,6 +81,7 @@ describe('Session', () => {
             .then(() => {
                 // Then it should fail and reauthenticate the user adding the new authToken to the session
                 // data in Onyx
+                console.log('ACCESSED THEN');
                 expect(session.authToken).toBe(TEST_REFRESHED_AUTH_TOKEN);
             });
     });
