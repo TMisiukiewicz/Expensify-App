@@ -462,29 +462,18 @@ class EmojiPickerMenu extends Component {
 
         const emojiCode = types && types[this.props.preferredSkinTone] ? types[this.props.preferredSkinTone] : code;
 
-        const isEmojiFocused = index === this.state.highlightedIndex && this.state.isUsingKeyboardMovement;
-
         return (
             <EmojiPickerMenuItem
                 onPress={(emoji) => this.addToFrequentAndSelectEmoji(emoji, item)}
-                onHoverIn={() => this.setState({highlightedIndex: index, isUsingKeyboardMovement: false})}
+                onHoverIn={() => {
+                    if(this.state.isUsingKeyboardMovement) this.setState({isUsingKeyboardMovement: false})
+                }}
                 onHoverOut={() => {
                     if (this.state.arePointerEventsDisabled) {
                         return;
                     }
-                    this.setState({highlightedIndex: -1});
                 }}
                 emoji={emojiCode}
-                onFocus={() => this.setState({highlightedIndex: index})}
-                onBlur={() =>
-                    this.setState((prevState) => ({
-                        // Only clear the highlighted index if the highlighted index is the same,
-                        // meaning that the focus changed to an element that is not an emoji item.
-                        highlightedIndex: prevState.highlightedIndex === index ? -1 : prevState.highlightedIndex,
-                    }))
-                }
-                isFocused={isEmojiFocused}
-                isHighlighted={index === this.state.highlightedIndex}
                 isUsingKeyboardMovement={this.state.isUsingKeyboardMovement}
             />
         );
