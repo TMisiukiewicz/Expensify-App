@@ -1,6 +1,6 @@
 /* eslint-disable rulesdir/onyx-props-must-have-default */
 import React, {useEffect, useRef, useCallback} from 'react';
-import {View, InteractionManager} from 'react-native';
+import {View, InteractionManager, StyleSheet} from 'react-native';
 import _ from 'underscore';
 import PropTypes from 'prop-types';
 import styles from '../../../styles/styles';
@@ -165,7 +165,7 @@ function SidebarLinks({onLinkClick, insets, optionListItems, isLoading, priority
 
             <LHNOptionsList
                 style={[isLoading ? styles.flexShrink1 : styles.flex1]}
-                contentContainerStyles={[styles.sidebarListContainer, {paddingBottom: StyleUtils.getSafeAreaMargins(insets).marginBottom}]}
+                contentContainerStyles={StyleSheet.flatten([styles.sidebarListContainer, {paddingBottom: StyleUtils.getSafeAreaMargins(insets).marginBottom}])}
                 data={optionListItems}
                 onSelectRow={showReportPage}
                 shouldDisableFocusOptions={isSmallScreenWidth}

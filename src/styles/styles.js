@@ -1317,7 +1317,6 @@ const styles = (theme) => ({
     },
 
     sidebarListContainer: {
-        scrollbarWidth: 'none',
         paddingBottom: 4,
     },
 
