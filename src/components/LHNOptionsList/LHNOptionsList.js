@@ -5,6 +5,7 @@ import {FlashList} from '@shopify/flash-list';
 import _ from 'underscore';
 import CONST from '../../CONST';
 import styles from '../../styles/styles';
+import variables from '../../styles/variables';
 import OptionRowLHNDataWithFocus from './OptionRowLHNDataWithFocus';
 
 const propTypes = {
@@ -61,7 +62,7 @@ function LHNOptionsList({style, contentContainerStyles, data, onSelectRow, optio
                 data={data}
                 keyExtractor={(item) => item}
                 renderItem={renderItem}
-                estimatedItemSize={54}
+                estimatedItemSize={optionMode === CONST.OPTION_MODE.COMPACT ? variables.optionRowHeightCompact : variables.optionRowHeight}
             />
         </View>
     );
