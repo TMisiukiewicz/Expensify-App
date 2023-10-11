@@ -172,13 +172,6 @@ export default React.memo(
             },
         }),
         withOnyx({
-            fullReport: {
-                key: ({reportID}) => `${ONYXKEYS.COLLECTION.REPORT}${reportID}`,
-            },
-            reportActions: {
-                key: ({reportID}) => `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${reportID}`,
-                canEvict: false,
-            },
             personalDetails: {
                 key: ONYXKEYS.PERSONAL_DETAILS_LIST,
                 selector: personalDetailsSelector,
@@ -189,13 +182,6 @@ export default React.memo(
         }),
         // eslint-disable-next-line rulesdir/no-multiple-onyx-in-file
         withOnyx({
-            parentReportActions: {
-                key: ({fullReport}) => `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${fullReport.parentReportID}`,
-                canEvict: false,
-            },
-            policy: {
-                key: ({fullReport}) => `${ONYXKEYS.COLLECTION.POLICY}${fullReport.policyID}`,
-            },
             // Ideally, we aim to access only the last transaction for the current report by listening to changes in reportActions.
             // In some scenarios, a transaction might be created after reportActions have been modified.
             // This can lead to situations where `lastTransaction` doesn't update and retains the previous value.
