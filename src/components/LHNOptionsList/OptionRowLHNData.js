@@ -1,4 +1,3 @@
-import {withOnyx} from 'react-native-onyx';
 import lodashGet from 'lodash/get';
 import _ from 'underscore';
 import PropTypes from 'prop-types';
@@ -6,11 +5,9 @@ import React, {useEffect, useRef, useMemo} from 'react';
 import {deepEqual} from 'fast-equals';
 import {withReportCommentDrafts} from '../OnyxProvider';
 import SidebarUtils from '../../libs/SidebarUtils';
-import compose from '../../libs/compose';
 import ONYXKEYS from '../../ONYXKEYS';
 import OptionRowLHN, {propTypes as basePropTypes, defaultProps as baseDefaultProps} from './OptionRowLHN';
 import * as Report from '../../libs/actions/Report';
-import * as UserUtils from '../../libs/UserUtils';
 import * as ReportActionsUtils from '../../libs/ReportActionsUtils';
 import * as TransactionUtils from '../../libs/TransactionUtils';
 
@@ -84,7 +81,6 @@ function OptionRowLHNData({
     ...propsToForward
 }) {
     const reportID = propsToForward.reportID;
-
     const parentReportAction = parentReportActions[fullReport.parentReportActionID];
 
     const optionItemRef = useRef();
@@ -132,30 +128,6 @@ OptionRowLHNData.defaultProps = defaultProps;
 OptionRowLHNData.displayName = 'OptionRowLHNData';
 
 /**
- * @param {Object} [personalDetails]
- * @returns {Object|undefined}
- */
-const personalDetailsSelector = (personalDetails) =>
-    _.reduce(
-        personalDetails,
-        (finalPersonalDetails, personalData, accountID) => {
-            // It's OK to do param-reassignment in _.reduce() because we absolutely know the starting state of finalPersonalDetails
-            // eslint-disable-next-line no-param-reassign
-            finalPersonalDetails[accountID] = {
-                accountID: Number(accountID),
-                login: personalData.login,
-                displayName: personalData.displayName,
-                firstName: personalData.firstName,
-                status: personalData.status,
-                avatar: UserUtils.getAvatar(personalData.avatar, personalData.accountID),
-                fallbackIcon: personalData.fallbackIcon,
-            };
-            return finalPersonalDetails;
-        },
-        {},
-    );
-
-/**
  * This component is rendered in a list.
  * On scroll we want to avoid that a item re-renders
  * just because the list has to re-render when adding more items.
@@ -163,37 +135,11 @@ const personalDetailsSelector = (personalDetails) =>
  * use it to prevent re-renders from parent re-renders.
  */
 export default React.memo(
-    compose(
-        withReportCommentDrafts({
-            propName: 'comment',
-            transformValue: (drafts, props) => {
-                const draftKey = `${ONYXKEYS.COLLECTION.REPORT_DRAFT_COMMENT}${props.reportID}`;
-                return lodashGet(drafts, draftKey, '');
-            },
-        }),
-        withOnyx({
-            personalDetails: {
-                key: ONYXKEYS.PERSONAL_DETAILS_LIST,
-                selector: personalDetailsSelector,
-            },
-            preferredLocale: {
-                key: ONYXKEYS.NVP_PREFERRED_LOCALE,
-            },
-        }),
-        // eslint-disable-next-line rulesdir/no-multiple-onyx-in-file
-        withOnyx({
-            // Ideally, we aim to access only the last transaction for the current report by listening to changes in reportActions.
-            // In some scenarios, a transaction might be created after reportActions have been modified.
-            // This can lead to situations where `lastTransaction` doesn't update and retains the previous value.
-            // However, performance overhead of this is minimized by using memos inside the component.
-            receiptTransactions: {key: ONYXKEYS.COLLECTION.TRANSACTION},
-        }),
-        // eslint-disable-next-line rulesdir/no-multiple-onyx-in-file
-        withOnyx({
-            transaction: {
-                key: ({fullReport, parentReportActions}) =>
-                    `${ONYXKEYS.COLLECTION.TRANSACTION}${lodashGet(parentReportActions, [fullReport.parentReportActionID, 'originalMessage', 'IOUTransactionID'], '')}`,
-            },
-        }),
-    )(OptionRowLHNData),
+    withReportCommentDrafts({
+        propName: 'comment',
+        transformValue: (drafts, props) => {
+            const draftKey = `${ONYXKEYS.COLLECTION.REPORT_DRAFT_COMMENT}${props.reportID}`;
+            return lodashGet(drafts, draftKey, '');
+        },
+    })(OptionRowLHNData),
 );
