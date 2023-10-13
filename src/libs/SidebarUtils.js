@@ -218,7 +218,7 @@ function getOrderedReportIDs(currentReportId, allReportsDict, betas, policies, p
  *
  * @param {Object} report
  * @param {Object} reportActions
- * @param {Object} personalDetails
+ * @param {Array} personalDetails
  * @param {String} preferredLocale
  * @param {Object} [policy]
  * @param {Object} parentReportAction
