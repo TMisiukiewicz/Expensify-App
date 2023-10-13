@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import React, {useCallback} from 'react';
+import React, {useCallback, useMemo} from 'react';
 import {View} from 'react-native';
 import {withOnyx} from 'react-native-onyx';
 import {FlashList} from '@shopify/flash-list';
@@ -13,6 +13,7 @@ import reportActionPropTypes from '../../pages/home/report/reportActionPropTypes
 import reportPropTypes from '../../pages/reportPropTypes';
 import * as UserUtils from '../../libs/UserUtils';
 import participantPropTypes from '../participantPropTypes';
+import * as OptionsListUtils from '../../libs/OptionsListUtils';
 
 const propTypes = {
     /** Wrapper style for the section list */
@@ -96,6 +97,21 @@ function LHNOptionsList({
     personalDetails,
     transactions,
 }) {
+
+    const itemPersonalDetails = useMemo(() => _.reduce(
+        personalDetails,
+        (finalPersonalDetails, personalData, accountID) => {
+            // It's OK to do param-reassignment in _.reduce() because we absolutely know the starting state of finalPersonalDetails
+            // eslint-disable-next-line no-param-reassign
+            finalPersonalDetails[accountID] = {
+                ...personalData,
+                accountID: Number(accountID),
+                avatar: UserUtils.getAvatar(personalData.avatar, personalData.accountID),
+            };
+            return finalPersonalDetails;
+        },
+        {},
+    ), [personalDetails]);
     /**
      * Function which renders a row in the list
      *
@@ -111,21 +127,7 @@ function LHNOptionsList({
             const itemParentReportActions = parentReportActions[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${itemFullReport.parentReportID}`];
             const itemPolicy = policy[`${ONYXKEYS.COLLECTION.POLICY}${itemFullReport.policyID}`];
             const itemTransaction = itemParentReportActions ? itemParentReportActions[itemFullReport.parentReportActionID].originalMessage.IOUTransactionID : undefined;
-            const itemPersonalDetails = _.reduce(
-                personalDetails,
-                (finalPersonalDetails, personalData, accountID) => {
-                    // It's OK to do param-reassignment in _.reduce() because we absolutely know the starting state of finalPersonalDetails
-                    // eslint-disable-next-line no-param-reassign
-                    finalPersonalDetails[accountID] = {
-                        ...personalData,
-                        accountID: Number(accountID),
-                        avatar: UserUtils.getAvatar(personalData.avatar, personalData.accountID),
-                    };
-                    return finalPersonalDetails;
-                },
-                {},
-            );
-
+            const participantPersonalDetailList = _.values(OptionsListUtils.getPersonalDetailsForAccountIDs(itemFullReport.participantAccountIDs, itemPersonalDetails));
             return (
                 <OptionRowLHNDataWithFocus
                     reportID={item}
@@ -133,7 +135,7 @@ function LHNOptionsList({
                     reportActions={itemReportActions}
                     parentReportActions={itemParentReportActions}
                     policy={itemPolicy}
-                    personalDetails={itemPersonalDetails}
+                    personalDetails={participantPersonalDetailList}
                     transaction={itemTransaction}
                     receiptTransactions={transactions}
                     viewMode={optionMode}
@@ -143,7 +145,7 @@ function LHNOptionsList({
                 />
             );
         },
-        [onSelectRow, optionMode, parentReportActions, personalDetails, policy, preferredLocale, reportActions, reports, shouldDisableFocusOptions, transactions],
+        [itemPersonalDetails, onSelectRow, optionMode, parentReportActions, policy, preferredLocale, reportActions, reports, shouldDisableFocusOptions, transactions],
     );
 
     return (

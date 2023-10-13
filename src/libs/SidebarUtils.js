@@ -271,8 +271,7 @@ function getOptionData(report, reportActions, personalDetails, preferredLocale, 
         isAllowedToComment: true,
     };
 
-    const participantPersonalDetailList = _.values(OptionsListUtils.getPersonalDetailsForAccountIDs(report.participantAccountIDs, personalDetails));
-    const personalDetail = participantPersonalDetailList[0] || {};
+    const personalDetail = personalDetails[0] || {};
 
     result.isThread = ReportUtils.isChatThread(report);
     result.isChatRoom = ReportUtils.isChatRoom(report);
@@ -307,7 +306,7 @@ function getOptionData(report, reportActions, personalDetails, preferredLocale, 
     result.notificationPreference = report.notificationPreference || null;
     result.isAllowedToComment = !ReportUtils.shouldDisableWriteActions(report);
 
-    const hasMultipleParticipants = participantPersonalDetailList.length > 1 || result.isChatRoom || result.isPolicyExpenseChat;
+    const hasMultipleParticipants = personalDetail.length > 1 || result.isChatRoom || result.isPolicyExpenseChat;
     const subtitle = ReportUtils.getChatRoomSubtitle(report);
 
     const login = Str.removeSMSDomain(lodashGet(personalDetail, 'login', ''));
@@ -315,7 +314,7 @@ function getOptionData(report, reportActions, personalDetails, preferredLocale, 
     const formattedLogin = Str.isSMSLogin(login) ? LocalePhoneNumber.formatPhoneNumber(login) : login;
 
     // We only create tooltips for the first 10 users or so since some reports have hundreds of users, causing performance to degrade.
-    const displayNamesWithTooltips = ReportUtils.getDisplayNamesWithTooltips((participantPersonalDetailList || []).slice(0, 10), hasMultipleParticipants);
+    const displayNamesWithTooltips = ReportUtils.getDisplayNamesWithTooltips((personalDetails || []).slice(0, 10), hasMultipleParticipants);
     const lastMessageTextFromReport = OptionsListUtils.getLastMessageTextForReport(report);
 
     // If the last actor's details are not currently saved in Onyx Collection,
@@ -396,10 +395,10 @@ function getOptionData(report, reportActions, personalDetails, preferredLocale, 
 
     result.text = reportName;
     result.subtitle = subtitle;
-    result.participantsList = participantPersonalDetailList;
+    result.participantsList = personalDetails;
 
     result.icons = ReportUtils.getIcons(report, personalDetails, UserUtils.getAvatar(personalDetail.avatar, personalDetail.accountID), '', -1, policy);
-    result.searchText = OptionsListUtils.getSearchText(report, reportName, participantPersonalDetailList, result.isChatRoom || result.isPolicyExpenseChat, result.isThread);
+    result.searchText = OptionsListUtils.getSearchText(report, reportName, personalDetails, result.isChatRoom || result.isPolicyExpenseChat, result.isThread);
     result.displayNamesWithTooltips = displayNamesWithTooltips;
     result.isLastMessageDeletedParentAction = report.isLastMessageDeletedParentAction;
 
