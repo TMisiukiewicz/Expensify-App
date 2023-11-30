@@ -277,8 +277,6 @@ function MoneyRequestParticipantsSelector({
         setSearchTerm(text);
     }, []);
 
-    const debouncedSetSearchTermAndSearchInServer = useCallback(_.debounce(setSearchTermAndSearchInServer, 300), []);
-
     // Right now you can't split a request with a workspace and other additional participants
     // This is getting properly fixed in https://github.com/Expensify/App/issues/27508, but as a stop-gap to prevent
     // the app from crashing on native when you try to do this, we'll going to show error message if you have a workspace and other participants
@@ -326,7 +324,7 @@ function MoneyRequestParticipantsSelector({
                 sections={sections}
                 selectedOptions={participants}
                 onSelectRow={addSingleParticipant}
-                onChangeText={debouncedSetSearchTermAndSearchInServer}
+                onChangeText={setSearchTermAndSearchInServer}
                 ref={forwardedRef}
                 headerMessage={headerMessage}
                 boldStyle

@@ -2499,7 +2499,7 @@ function searchInServer(searchInput) {
     // we want to show the loading state right away. Otherwise, we will see a flashing UI where the client options are sorted and
     // tell the user there are no options, then we start searching, and tell them there are no options again.
     Onyx.set(ONYXKEYS.IS_SEARCHING_FOR_REPORTS, true);
-    searchForReports(searchInput);
+    debouncedSearchInServer(searchInput);
 }
 
 export {
