@@ -160,20 +160,32 @@ function MoneyRequestParticipantsSelector({
         }
 
         return newSections;
-    }, [maxParticipantsReached, newChatOptions, participants, personalDetails, translate, searchTerm]);
+    }, [maxParticipantsReached, newChatOptions, participants, personalDetails, translate]);
 
     /**
      * Adds a single participant to the request
      *
      * @param {Object} option
      */
-    const addSingleParticipant = (option) => {
-        onAddParticipants(
-            [{accountID: option.accountID, login: option.login, isPolicyExpenseChat: option.isPolicyExpenseChat, reportID: option.reportID, selected: true, searchText: option.searchText}],
-            false,
-        );
-        navigateToRequest();
-    };
+    const addSingleParticipant = useCallback(
+        (option) => {
+            onAddParticipants(
+                [
+                    {
+                        accountID: option.accountID,
+                        login: option.login,
+                        isPolicyExpenseChat: option.isPolicyExpenseChat,
+                        reportID: option.reportID,
+                        selected: true,
+                        searchText: option.searchText,
+                    },
+                ],
+                false,
+            );
+            navigateToRequest();
+        },
+        [onAddParticipants, navigateToRequest],
+    );
 
     /**
      * Removes a selected option from list if already selected. If not already selected add this option to the list.
@@ -265,7 +277,7 @@ function MoneyRequestParticipantsSelector({
         setSearchTerm(text);
     }, []);
 
-    const debouncedSetSearchTermAndSearchInServer = _.debounce(setSearchTermAndSearchInServer, CONST.TIMING.SEARCH_FOR_REPORTS_DEBOUNCE_TIME);
+    const debouncedSetSearchTermAndSearchInServer = useCallback(_.debounce(setSearchTermAndSearchInServer, 300), []);
 
     // Right now you can't split a request with a workspace and other additional participants
     // This is getting properly fixed in https://github.com/Expensify/App/issues/27508, but as a stop-gap to prevent
@@ -282,23 +294,26 @@ function MoneyRequestParticipantsSelector({
         navigateToSplit();
     }, [shouldShowSplitBillErrorMessage, navigateToSplit]);
 
-    const footerContent = (
-        <View>
-            {shouldShowSplitBillErrorMessage && (
-                <FormHelpMessage
-                    style={[styles.ph1, styles.mb2]}
-                    isError
-                    message="iou.error.splitBillMultipleParticipantsErrorMessage"
+    const footerContent = useMemo(
+        () => (
+            <View>
+                {shouldShowSplitBillErrorMessage && (
+                    <FormHelpMessage
+                        style={[styles.ph1, styles.mb2]}
+                        isError
+                        message="iou.error.splitBillMultipleParticipantsErrorMessage"
+                    />
+                )}
+                <Button
+                    success
+                    text={translate('iou.addToSplit')}
+                    onPress={handleConfirmSelection}
+                    pressOnEnter
+                    isDisabled={shouldShowSplitBillErrorMessage}
                 />
-            )}
-            <Button
-                success
-                text={translate('iou.addToSplit')}
-                onPress={handleConfirmSelection}
-                pressOnEnter
-                isDisabled={shouldShowSplitBillErrorMessage}
-            />
-        </View>
+            </View>
+        ),
+        [shouldShowSplitBillErrorMessage, handleConfirmSelection, styles, translate],
     );
 
     return (

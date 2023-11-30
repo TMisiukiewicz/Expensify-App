@@ -97,6 +97,10 @@ class BaseOptionsSelector extends Component {
         };
     }
 
+    shouldComponentUpdate(nextProps, nextState) {
+        return !_.isEqual(this.props, nextProps);
+    }
+
     componentDidMount() {
         this.subscribeToKeyboardShortcut();
 
