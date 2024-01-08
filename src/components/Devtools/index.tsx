@@ -1,3 +1,4 @@
+import React from 'react';
 import {Pressable, Text} from 'react-native';
 import Performance from 'react-native-performance';
 

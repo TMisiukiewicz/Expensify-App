@@ -3,6 +3,8 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {View} from 'react-native';
 import {withOnyx} from 'react-native-onyx';
 import HeaderWithBackButton from '@components/HeaderWithBackButton';
+import {useBetas, usePersonalDetails} from '@components/OnyxProvider';
+import {useOptionsListContext} from '@components/OptionsListContext';
 import OptionsSelector from '@components/OptionsSelector';
 import ScreenWrapper from '@components/ScreenWrapper';
 import useLocalize from '@hooks/useLocalize';
@@ -16,78 +18,72 @@ import * as Report from '@userActions/Report';
 import Timing from '@userActions/Timing';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
-import personalDetailsPropType from './personalDetailsPropType';
-import reportPropTypes from './reportPropTypes';
 
 const propTypes = {
     /* Onyx Props */
-
-    /** Beta features list */
-    betas: PropTypes.arrayOf(PropTypes.string),
-
-    /** All of the personal details for everyone */
-    personalDetails: PropTypes.objectOf(personalDetailsPropType),
-
-    /** All reports shared with the user */
-    reports: PropTypes.objectOf(reportPropTypes),
 
     /** Whether we are searching for reports in the server */
     isSearchingForReports: PropTypes.bool,
 };
 
 const defaultProps = {
-    betas: [],
-    personalDetails: {},
-    reports: {},
     isSearchingForReports: false,
 };
 
-function SearchPage({betas, personalDetails, reports, isSearchingForReports}) {
+function SearchPage({isSearchingForReports}) {
     const [searchValue, setSearchValue] = useState('');
+    const {options} = useOptionsListContext();
     const [searchOptions, setSearchOptions] = useState({
-        recentReports: {},
-        personalDetails: {},
-        userToInvite: {},
+        recentReports: [],
+        personalDetails: [],
+        userToInvite: null,
     });
-
+    const personalDetails = usePersonalDetails();
     const {isOffline} = useNetwork();
     const {translate} = useLocalize();
     const themeStyles = useThemeStyles();
-    const isMounted = useRef(false);
-
-    const updateOptions = useCallback(() => {
-        const {
-            recentReports: localRecentReports,
-            personalDetails: localPersonalDetails,
-            userToInvite: localUserToInvite,
-        } = OptionsListUtils.getSearchOptions(reports, personalDetails, searchValue.trim(), betas);
-
-        setSearchOptions({
-            recentReports: localRecentReports,
-            personalDetails: localPersonalDetails,
-            userToInvite: localUserToInvite,
-        });
-    }, [reports, personalDetails, searchValue, betas]);
+    const betas = useBetas();
+    // const updateOptions = useCallback(() => {
+    //     loadOptions();
+    // }, [loadOptions]);
 
     useEffect(() => {
         Timing.start(CONST.TIMING.SEARCH_RENDER);
         Performance.markStart(CONST.TIMING.SEARCH_RENDER);
+        const time = performance.now();
+        const response = OptionsListUtils.getNewSearchOptions(options.reports, options.personalDetails, {
+            betas,
+            searchInputValue: searchValue.trim(),
+            includeRecentReports: true,
+            includeMultipleParticipantReports: true,
+            maxRecentReportsToShow: 0, // Unlimited
+            sortByReportTypeInSearch: true,
+            showChatPreviewLine: true,
+            includePersonalDetails: true,
+            forcePolicyNamePreview: true,
+            includeOwnedWorkspaceChats: true,
+            includeThreads: true,
+            includeMoneyRequests: true,
+            includeTasks: true,
+        });
+        console.log('SearchPage: getNewSearchOptions took', performance.now() - time, 'ms');
+        setSearchOptions({
+            recentReports: response.recentReports,
+            personalDetails: response.personalDetails,
+            userToInvite: response.userToInvite,
+        });
     }, []);
 
-    useEffect(() => {
-        updateOptions();
-    }, [reports, personalDetails, betas, updateOptions]);
+    // useEffect(() => {
+    //     if (!isMounted.current) {
+    //         isMounted.current = true;
+    //         return;
+    //     }
 
-    useEffect(() => {
-        if (!isMounted.current) {
-            isMounted.current = true;
-            return;
-        }
-
-        updateOptions();
-        // Ignoring the rule intentionally, we want to run the code only when search Value changes to prevent additional runs.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchValue]);
+    //     updateOptions();
+    //     // Ignoring the rule intentionally, we want to run the code only when search Value changes to prevent additional runs.
+    //     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // }, [searchValue]);
 
     /**
      * Returns the sections needed for the OptionsSelector
@@ -164,9 +160,9 @@ function SearchPage({betas, personalDetails, reports, isSearchingForReports}) {
         <ScreenWrapper
             includeSafeAreaPaddingBottom={false}
             testID={SearchPage.displayName}
-            onEntryTransitionEnd={updateOptions}
+            // onEntryTransitionEnd={updateOptions}
         >
-            {({didScreenTransitionEnd, safeAreaPaddingBottomStyle}) => (
+            {({safeAreaPaddingBottomStyle}) => (
                 <>
                     <HeaderWithBackButton title={translate('common.search')} />
                     <View style={[themeStyles.flex1, themeStyles.w100, themeStyles.pRelative]}>
@@ -177,7 +173,7 @@ function SearchPage({betas, personalDetails, reports, isSearchingForReports}) {
                             headerMessage={headerMessage}
                             hideSectionHeaders
                             showTitleTooltip
-                            shouldShowOptions={didScreenTransitionEnd && isOptionsDataReady}
+                            shouldShowOptions={isOptionsDataReady}
                             textInputLabel={translate('optionsSelector.nameEmailOrPhoneNumber')}
                             shouldShowReferralCTA
                             referralContentType={CONST.REFERRAL_PROGRAM.CONTENT_TYPES.REFER_FRIEND}
@@ -198,15 +194,6 @@ SearchPage.propTypes = propTypes;
 SearchPage.defaultProps = defaultProps;
 SearchPage.displayName = 'SearchPage';
 export default withOnyx({
-    reports: {
-        key: ONYXKEYS.COLLECTION.REPORT,
-    },
-    personalDetails: {
-        key: ONYXKEYS.PERSONAL_DETAILS_LIST,
-    },
-    betas: {
-        key: ONYXKEYS.BETAS,
-    },
     isSearchingForReports: {
         key: ONYXKEYS.IS_SEARCHING_FOR_REPORTS,
         initWithStoredValues: false,

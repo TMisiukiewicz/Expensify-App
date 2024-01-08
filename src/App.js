@@ -6,6 +6,7 @@ import Onyx from 'react-native-onyx';
 import {PickerStateProvider} from 'react-native-picker-select';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import '../wdyr';
+import { OptionsListContextProvider } from './components/OptionsListContext';
 import ColorSchemeWrapper from './components/ColorSchemeWrapper';
 import ComposeProviders from './components/ComposeProviders';
 import CustomStatusBarAndBackground from './components/CustomStatusBarAndBackground';
@@ -69,6 +70,7 @@ function App() {
                     PickerStateProvider,
                     EnvironmentProvider,
                     CustomStatusBarAndBackgroundContextProvider,
+                    OptionsListContextProvider
                 ]}
             >
                 <CustomStatusBarAndBackground />

@@ -15,6 +15,7 @@ import * as Localize from './Localize';
 import * as LoginUtils from './LoginUtils';
 import ModifiedExpenseMessage from './ModifiedExpenseMessage';
 import Navigation from './Navigation/Navigation';
+import Performance from './Performance';
 import Permissions from './Permissions';
 import * as PersonalDetailsUtils from './PersonalDetailsUtils';
 import * as ReportActionUtils from './ReportActionsUtils';
@@ -22,7 +23,6 @@ import * as ReportUtils from './ReportUtils';
 import * as TaskUtils from './TaskUtils';
 import * as TransactionUtils from './TransactionUtils';
 import * as UserUtils from './UserUtils';
-import Performance from './Performance';
 
 /**
  * OptionsListUtils is used to build a list options passed to the OptionsList component. Several different UI views can
@@ -1052,6 +1052,275 @@ function getTagListSections(rawTags, recentlyUsedTags, selectedOptions, searchIn
     return tagSections;
 }
 
+function getNewOptions(reports, personalDetails, {betas = [], reportActions = {}, showChatPreviewLine = true, searchValue = ''}) {
+    const reportMapForAccountIDs = {};
+
+    // Filter out all the reports that shouldn't be displayed
+    const filteredReports = _.filter(reports, (report) => ReportUtils.shouldReportBeInOptionList(report, Navigation.getTopmostReportId(), false, betas, policies));
+
+    // Sorting the reports works like this:
+    // - Order everything by the last message timestamp (descending)
+    // - All archived reports should remain at the bottom
+    const orderedReports = _.sortBy(filteredReports, (report) => {
+        if (ReportUtils.isArchivedRoom(report)) {
+            return CONST.DATE.UNIX_EPOCH;
+        }
+
+        return report.lastVisibleActionCreated;
+    });
+    orderedReports.reverse();
+
+    const allReportOptions = [];
+    _.each(orderedReports, (report) => {
+        if (!report) {
+            return;
+        }
+
+        const isChatRoom = ReportUtils.isChatRoom(report);
+        const isPolicyExpenseChat = ReportUtils.isPolicyExpenseChat(report);
+        const accountIDs = report.participantAccountIDs || [];
+
+        // Save the report in the map if this is a single participant so we can associate the reportID with the
+        // personal detail option later. Individuals should not be associated with single participant
+        // policyExpenseChats or chatRooms since those are not people.
+        if (accountIDs.length <= 1 && !isPolicyExpenseChat && !isChatRoom) {
+            reportMapForAccountIDs[accountIDs[0]] = report;
+        }
+        const isSearchingSomeonesPolicyExpenseChat = !report.isOwnPolicyExpenseChat && searchValue !== '';
+
+        // Checks to see if the current user is the admin of the policy, if so the policy
+        // name preview will be shown.
+        const isPolicyChatAdmin = ReportUtils.isPolicyExpenseChatAdmin(report, policies);
+
+        allReportOptions.push(
+            createOption(accountIDs, personalDetails, report, reportActions, {
+                showChatPreviewLine,
+                forcePolicyNamePreview: isPolicyExpenseChat ? isSearchingSomeonesPolicyExpenseChat || isPolicyChatAdmin : true,
+            }),
+        );
+    });
+
+    // We're only picking personal details that have logins set
+    // This is a temporary fix for all the logic that's been breaking because of the new privacy changes
+    // See https://github.com/Expensify/Expensify/issues/293465 for more context
+    // Moreover, we should not override the personalDetails object, otherwise the createOption util won't work properly, it returns incorrect tooltipText
+    const havingLoginPersonalDetails = _.pick(personalDetails, (detail) => Boolean(detail.login) && !detail.isOptimisticPersonalDetail);
+    let allPersonalDetailsOptions = _.map(havingLoginPersonalDetails, (personalDetail) =>
+        createOption([personalDetail.accountID], personalDetails, reportMapForAccountIDs[personalDetail.accountID], reportActions, {
+            showChatPreviewLine,
+            forcePolicyNamePreview: true,
+        }),
+    );
+    // PersonalDetails should be ordered Alphabetically by default - https://github.com/Expensify/App/issues/8220#issuecomment-1104009435
+    allPersonalDetailsOptions = lodashOrderBy(allPersonalDetailsOptions, [(personalDetail) => personalDetail.text && personalDetail.text.toLowerCase()], 'asc');
+
+    return {
+        reportsOptions: allReportOptions,
+        personalDetailsOptions: allPersonalDetailsOptions,
+    };
+}
+
+function getNewSearchOptions(
+    allReportOptions,
+    allPersonalDetailsOptions,
+    {
+        betas = [],
+        personalDetails = {},
+        reportActions = {},
+        searchInputValue = '',
+        includeRecentReports = false,
+        maxRecentReportsToShow = 0,
+        includeOwnedWorkspaceChats = false,
+        includeMultipleParticipantReports = false,
+        includeThreads = false,
+        selectedOptions = [],
+        includeSelectedOptions = false,
+        excludeLogins = [],
+        includePersonalDetails = false,
+        excludeUnknownUsers = true,
+        showChatPreviewLine = false,
+        // When sortByReportTypeInSearch flag is true, recentReports will include the personalDetails options as well.
+        sortByReportTypeInSearch = false,
+        canInviteUser = false,
+    },
+) {
+    let recentReportOptions = [];
+    let personalDetailsOptions = [];
+    const parsedPhoneNumber = parsePhoneNumber(LoginUtils.appendCountryCode(Str.removeSMSDomain(searchInputValue)));
+    const searchValue = parsedPhoneNumber.possible ? parsedPhoneNumber.number.e164 : searchInputValue.toLowerCase();
+
+    const optionsToExclude = [{login: currentUserLogin}, {login: CONST.EMAIL.NOTIFICATIONS}];
+
+    // If we're including selected options from the search results, we only want to exclude them if the search input is empty
+    // This is because on certain pages, we show the selected options at the top when the search input is empty
+    // This prevents the issue of seeing the selected option twice if you have them as a recent chat and select them
+    if (!includeSelectedOptions || searchInputValue === '') {
+        optionsToExclude.push(...selectedOptions);
+    }
+
+    _.each(excludeLogins, (login) => {
+        optionsToExclude.push({login});
+    });
+
+    if (includeRecentReports) {
+        for (let i = 0; i < allReportOptions.length; i++) {
+            const reportOption = allReportOptions[i];
+
+            // Stop adding options to the recentReports array when we reach the maxRecentReportsToShow value
+            if (recentReportOptions.length > 0 && recentReportOptions.length === maxRecentReportsToShow) {
+                break;
+            }
+
+            // Skip notifications@expensify.com
+            if (reportOption.login === CONST.EMAIL.NOTIFICATIONS) {
+                continue;
+            }
+
+            const isCurrentUserOwnedPolicyExpenseChatThatCouldShow =
+                reportOption.isPolicyExpenseChat && reportOption.ownerAccountID === currentUserAccountID && includeOwnedWorkspaceChats && !reportOption.isArchivedRoom;
+
+            // Skip if we aren't including multiple participant reports and this report has multiple participants
+            if (!isCurrentUserOwnedPolicyExpenseChatThatCouldShow && !includeMultipleParticipantReports && !reportOption.login) {
+                continue;
+            }
+
+            // If we're excluding threads, check the report to see if it has a single participant and if the participant is already selected
+            if (
+                !includeThreads &&
+                (reportOption.login || reportOption.reportID) &&
+                _.some(optionsToExclude, (option) => (option.login && option.login === reportOption.login) || (option.reportID && option.reportID === reportOption.reportID))
+            ) {
+                continue;
+            }
+
+            // Finally check to see if this option is a match for the provided search string if we have one
+            const {searchText, participantsList, isChatRoom} = reportOption;
+            const participantNames = getParticipantNames(participantsList);
+
+            if (searchValue) {
+                // Determine if the search is happening within a chat room and starts with the report ID
+                const isReportIdSearch = isChatRoom && Str.startsWith(reportOption.reportID, searchValue);
+
+                // Check if the search string matches the search text or participant names considering the type of the room
+                const isSearchMatch = isSearchStringMatch(searchValue, searchText, participantNames, isChatRoom);
+
+                if (!isReportIdSearch && !isSearchMatch) {
+                    continue;
+                }
+            }
+
+            recentReportOptions.push(reportOption);
+
+            // Add this login to the exclude list so it won't appear when we process the personal details
+            if (reportOption.login) {
+                optionsToExclude.push({login: reportOption.login});
+            }
+        }
+    }
+
+    if (includePersonalDetails) {
+        // Next loop over all personal details removing any that are selectedUsers or recentChats
+        _.each(allPersonalDetailsOptions, (personalDetailOption) => {
+            if (_.some(optionsToExclude, (optionToExclude) => optionToExclude.login === personalDetailOption.login)) {
+                return;
+            }
+            const {searchText, participantsList, isChatRoom} = personalDetailOption;
+            const participantNames = getParticipantNames(participantsList);
+            if (searchValue && !isSearchStringMatch(searchValue, searchText, participantNames, isChatRoom)) {
+                return;
+            }
+
+            personalDetailsOptions.push(personalDetailOption);
+        });
+    }
+
+    let currentUserOption = _.find(allPersonalDetailsOptions, (personalDetailsOption) => personalDetailsOption.login === currentUserLogin);
+    if (searchValue && currentUserOption && !isSearchStringMatch(searchValue, currentUserOption.searchText)) {
+        currentUserOption = null;
+    }
+
+    let userToInvite = null;
+    const noOptions = recentReportOptions.length + personalDetailsOptions.length === 0 && !currentUserOption;
+    const noOptionsMatchExactly = !_.find(
+        personalDetailsOptions.concat(recentReportOptions),
+        (option) => option.login === addSMSDomainIfPhoneNumber(searchValue).toLowerCase() || option.login === searchValue.toLowerCase(),
+    );
+
+    if (
+        searchValue &&
+        (noOptions || noOptionsMatchExactly) &&
+        !isCurrentUser({login: searchValue}) &&
+        _.every(selectedOptions, (option) => option.login !== searchValue) &&
+        ((Str.isValidEmail(searchValue) && !Str.isDomainEmail(searchValue) && !Str.endsWith(searchValue, CONST.SMS.DOMAIN)) ||
+            (parsedPhoneNumber.possible && Str.isValidPhone(LoginUtils.getPhoneNumberWithoutSpecialChars(parsedPhoneNumber.number.input)))) &&
+        !_.find(optionsToExclude, (optionToExclude) => optionToExclude.login === addSMSDomainIfPhoneNumber(searchValue).toLowerCase()) &&
+        (searchValue !== CONST.EMAIL.CHRONOS || Permissions.canUseChronos(betas)) &&
+        !excludeUnknownUsers
+    ) {
+        // Generates an optimistic account ID for new users not yet saved in Onyx
+        const optimisticAccountID = UserUtils.generateAccountID(searchValue);
+        const personalDetailsExtended = {
+            ...personalDetails,
+            [optimisticAccountID]: {
+                accountID: optimisticAccountID,
+                login: searchValue,
+                avatar: UserUtils.getDefaultAvatar(optimisticAccountID),
+            },
+        };
+        userToInvite = createOption([optimisticAccountID], personalDetailsExtended, null, reportActions, {
+            showChatPreviewLine,
+        });
+        userToInvite.isOptimisticAccount = true;
+        userToInvite.login = searchValue;
+        userToInvite.text = userToInvite.text || searchValue;
+        userToInvite.alternateText = userToInvite.alternateText || searchValue;
+
+        // If user doesn't exist, use a default avatar
+        userToInvite.icons = [
+            {
+                source: UserUtils.getAvatar('', optimisticAccountID),
+                name: searchValue,
+                type: CONST.ICON_TYPE_AVATAR,
+            },
+        ];
+    }
+
+    // If we are prioritizing 1:1 chats in search, do it only once we started searching
+    if (sortByReportTypeInSearch && searchValue !== '') {
+        // When sortByReportTypeInSearch is true, recentReports will be returned with all the reports including personalDetailsOptions in the correct Order.
+        recentReportOptions.push(...personalDetailsOptions);
+        personalDetailsOptions = [];
+        recentReportOptions = lodashOrderBy(
+            recentReportOptions,
+            [
+                (option) => {
+                    if (option.isChatRoom || option.isArchivedRoom) {
+                        return 3;
+                    }
+                    if (!option.login) {
+                        return 2;
+                    }
+                    if (option.login.toLowerCase() !== searchValue.toLowerCase()) {
+                        return 1;
+                    }
+
+                    // When option.login is an exact match with the search value, returning 0 puts it at the top of the option list
+                    return 0;
+                },
+            ],
+            ['asc'],
+        );
+    }
+
+    return {
+        personalDetails: personalDetailsOptions,
+        recentReports: recentReportOptions,
+        userToInvite: canInviteUser ? userToInvite : null,
+        currentUserOption,
+        categoryOptions: [],
+        tagOptions: [],
+    };
+}
 /**
  * Build the options
  *
@@ -1771,4 +2040,6 @@ export {
     getCategoryOptionTree,
     formatMemberForList,
     formatSectionsFromSearchTerm,
+    getNewOptions,
+    getNewSearchOptions,
 };
