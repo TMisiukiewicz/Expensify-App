@@ -78,7 +78,7 @@ function SidebarLinksData({isFocused, allReportActions, betas, chatReports, curr
         Performance.markStart('optionListItems.getOrderedReportIDs');
         Timing.start('optionListItems.getOrderedReportIDs');
         const reportIDs = SidebarUtils.getOrderedReportIDs(null, chatReports, betas, policies, priorityMode, allReportActions);
-        Performance.markStart('SidebarLinksData.markEnd');
+        Performance.markEnd('optionListItems.getOrderedReportIDs');
         Timing.end('optionListItems.getOrderedReportIDs');
 
         if (deepEqual(reportIDsRef.current, reportIDs)) {
