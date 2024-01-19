@@ -10,7 +10,9 @@ import ONYXKEYS from '@src/ONYXKEYS';
 import type {FrequentlyUsedEmoji, Locale} from '@src/types/onyx';
 import type {ReportActionReaction, UsersReactions} from '@src/types/onyx/ReportActionReactions';
 import type IconAsset from '@src/types/utils/IconAsset';
+import Timing from './actions/Timing';
 import type {SupportedLanguage} from './EmojiTrie';
+import Performance from './Performance';
 
 type HeaderIndice = {code: string; index: number; icon: IconAsset};
 type EmojiSpacer = {code: string; spacer: boolean};
@@ -371,8 +373,11 @@ function replaceEmojis(text: string, preferredSkinTone = CONST.EMOJI_DEFAULT_SKI
  * Find all emojis in a text and replace them with their code.
  */
 function replaceAndExtractEmojis(text: string, preferredSkinTone = CONST.EMOJI_DEFAULT_SKIN_TONE, lang = CONST.LOCALES.DEFAULT): ReplacedEmoji {
+    Performance.markStart('replaceAndExtractEmojis');
+    Timing.start('replaceAndExtractEmojis');
     const {text: convertedText = '', emojis = [], cursorPosition} = replaceEmojis(text, preferredSkinTone, lang);
-
+    Performance.markEnd('replaceAndExtractEmojis');
+    Timing.end('replaceAndExtractEmojis');
     return {
         text: convertedText,
         emojis: emojis.concat(extractEmojis(text)),

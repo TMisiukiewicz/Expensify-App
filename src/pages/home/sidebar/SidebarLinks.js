@@ -29,6 +29,8 @@ import * as Session from '@userActions/Session';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import ROUTES from '@src/ROUTES';
+import Performance from '@libs/Performance';
+import Timing from '@libs/actions/Timing';
 import SignInOrAvatarWithOptionalStatus from './SignInOrAvatarWithOptionalStatus';
 
 const basePropTypes = {
@@ -134,6 +136,8 @@ function SidebarLinks({onLinkClick, insets, optionListItems, isLoading, priority
      */
     const showReportPage = useCallback(
         (option) => {
+            Performance.markStart('showReportPage');
+            Timing.start('showReportPage');
             // Prevent opening Report page when clicking LHN row quickly after clicking FAB icon
             // or when clicking the active LHN row on large screens
             // or when continuously clicking different LHNs, only apply to small screen

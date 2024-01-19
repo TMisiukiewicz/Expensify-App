@@ -16,6 +16,8 @@ import SidebarUtils from '@libs/SidebarUtils';
 import reportPropTypes from '@pages/reportPropTypes';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
+import Performance from '@libs/Performance';
+import Timing from '@libs/actions/Timing';
 import SidebarLinks, {basePropTypes} from './SidebarLinks';
 
 const propTypes = {
@@ -73,7 +75,11 @@ function SidebarLinksData({isFocused, allReportActions, betas, chatReports, curr
     const reportIDsRef = useRef(null);
     const isLoading = isLoadingApp;
     const optionListItems = useMemo(() => {
+        Performance.markStart('optionListItems.getOrderedReportIDs');
+        Timing.start('optionListItems.getOrderedReportIDs');
         const reportIDs = SidebarUtils.getOrderedReportIDs(null, chatReports, betas, policies, priorityMode, allReportActions);
+        Performance.markStart('SidebarLinksData.markEnd');
+        Timing.end('optionListItems.getOrderedReportIDs');
 
         if (deepEqual(reportIDsRef.current, reportIDs)) {
             return reportIDsRef.current;
@@ -94,7 +100,12 @@ function SidebarLinksData({isFocused, allReportActions, betas, chatReports, curr
     // case we re-generate the list a 2nd time with the current report included.
     const optionListItemsWithCurrentReport = useMemo(() => {
         if (currentReportID && !_.contains(optionListItems, currentReportID)) {
-            return SidebarUtils.getOrderedReportIDs(currentReportID, chatReports, betas, policies, priorityMode, allReportActions);
+            Performance.markStart('optionListItemsWithCurrentReport.getOrderedReportIDs');
+            Timing.start('optionListItemsWithCurrentReport.getOrderedReportIDs');
+            const orderedReport = SidebarUtils.getOrderedReportIDs(currentReportID, chatReports, betas, policies, priorityMode, allReportActions);
+            Performance.markEnd('optionListItemsWithCurrentReport.getOrderedReportIDs');
+            Timing.end('optionListItemsWithCurrentReport.getOrderedReportIDs');
+            return orderedReport;
         }
         return optionListItems;
     }, [currentReportID, optionListItems, chatReports, betas, policies, priorityMode, allReportActions]);
