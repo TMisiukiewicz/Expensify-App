@@ -49,10 +49,6 @@ Onyx.connect({
     },
 });
 
-const collator = new Intl.Collator('en');
-
-const localeCompare = (str1: string, str2: string) => collator.compare(str1.toLowerCase(), str2.toLowerCase());
-
 // Session can remain stale because the only way for the current user to change is to
 // sign out and sign in, which would clear out all the Onyx
 // data anyway and cause SidebarLinks to rerender.
@@ -204,20 +200,20 @@ function getOrderedReportIDs(
     });
 
     // Sort each group of reports accordingly
-    pinnedAndGBRReports.sort((a, b) => (a?.displayName && b?.displayName ? localeCompare(a.displayName, b.displayName) : 0));
-    draftReports.sort((a, b) => (a?.displayName && b?.displayName ? localeCompare(a.displayName, b.displayName) : 0));
+    pinnedAndGBRReports.sort((a, b) => (a?.displayName && b?.displayName ? a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()) : 0));
+    draftReports.sort((a, b) => (a?.displayName && b?.displayName ? a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()) : 0));
 
     if (isInDefaultMode) {
         nonArchivedReports.sort((a, b) => {
             const compareDates = a?.lastVisibleActionCreated && b?.lastVisibleActionCreated ? compareStringDates(b.lastVisibleActionCreated, a.lastVisibleActionCreated) : 0;
-            const compareDisplayNames = a?.displayName && b?.displayName ? localeCompare(a.displayName, b.displayName) : 0;
+            const compareDisplayNames = a?.displayName && b?.displayName ? a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()) : 0;
             return compareDates || compareDisplayNames;
         });
         // For archived reports ensure that most recent reports are at the top by reversing the order
         archivedReports.sort((a, b) => (a?.lastVisibleActionCreated && b?.lastVisibleActionCreated ? compareStringDates(b.lastVisibleActionCreated, a.lastVisibleActionCreated) : 0));
     } else {
-        nonArchivedReports.sort((a, b) => (a?.displayName && b?.displayName ? localeCompare(a.displayName, b.displayName) : 0));
-        archivedReports.sort((a, b) => (a?.displayName && b?.displayName ? localeCompare(a.displayName, b.displayName) : 0));
+        nonArchivedReports.sort((a, b) => (a?.displayName && b?.displayName ? a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()) : 0));
+        archivedReports.sort((a, b) => (a?.displayName && b?.displayName ? a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()) : 0));
     }
 
     // Now that we have all the reports grouped and sorted, they must be flattened into an array and only return the reportID.
