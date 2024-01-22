@@ -442,14 +442,6 @@ function ReportScreen({
         }
     }, [report, didSubscribeToReportLeavingEvents, reportID]);
 
-    // eslint-disable-next-line rulesdir/prefer-early-return
-    useEffect(() => {
-        if(isReportReadyForDisplay && !isLoadingInitialReportActions && !isLoading) {
-            Performance.markEnd('showReportPage');
-            Timing.end('showReportPage');
-        }
-    }, [isLoading, isLoadingInitialReportActions, isReportReadyForDisplay])
-
     const onListLayout = useCallback((e) => {
         setListHeight((prev) => lodashGet(e, 'nativeEvent.layout.height', prev));
         if (!markReadyForHydration) {

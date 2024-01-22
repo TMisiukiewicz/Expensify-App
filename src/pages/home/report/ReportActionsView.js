@@ -237,6 +237,8 @@ function ReportActionsView(props) {
         didLayout.current = true;
         Timing.end(CONST.TIMING.SWITCH_REPORT, hasCachedActions ? CONST.TIMING.WARM : CONST.TIMING.COLD);
 
+        Performance.markEnd('showReportPage');
+        Timing.end('showReportPage');
         // Capture the init measurement only once not per each chat switch as the value gets overwritten
         if (!ReportActionsView.initMeasured) {
             Performance.markEnd(CONST.TIMING.REPORT_INITIAL_RENDER);
