@@ -1,9 +1,10 @@
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
-import type {MapState} from '@rnmapbox/maps';
-import Mapbox, {MarkerView, setAccessToken} from '@rnmapbox/maps';
+// import type {MapState} from '@rnmapbox/maps';
+// import Mapbox, {MarkerView, setAccessToken} from '@rnmapbox/maps';
 import {forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import {View} from 'react-native';
 import {withOnyx} from 'react-native-onyx';
+import Text from '@components/Text';
 import useThemeStyles from '@hooks/useThemeStyles';
 import setUserLocation from '@libs/actions/UserLocation';
 import compose from '@libs/compose';
@@ -26,7 +27,7 @@ const MapView = forwardRef<MapViewHandle, ComponentProps>(
         const {translate} = useLocalize();
         const styles = useThemeStyles();
 
-        const cameraRef = useRef<Mapbox.Camera>(null);
+        // const cameraRef = useRef<Mapbox.Camera>(null);
         const [isIdle, setIsIdle] = useState(false);
         const [currentPosition, setCurrentPosition] = useState(cachedUserLocation);
         const [userInteractedWithMap, setUserInteractedWithMap] = useState(false);
@@ -67,57 +68,57 @@ const MapView = forwardRef<MapViewHandle, ComponentProps>(
         // if there are one or more waypoints present.
         const shouldPanMapToCurrentPosition = useCallback(() => !userInteractedWithMap && (!waypoints || waypoints.length === 0), [userInteractedWithMap, waypoints]);
 
-        useEffect(() => {
-            if (!currentPosition || !cameraRef.current) {
-                return;
-            }
+        // useEffect(() => {
+        //     if (!currentPosition || !cameraRef.current) {
+        //         return;
+        //     }
 
-            if (!shouldPanMapToCurrentPosition()) {
-                return;
-            }
+        //     if (!shouldPanMapToCurrentPosition()) {
+        //         return;
+        //     }
 
-            cameraRef.current.setCamera({
-                zoomLevel: CONST.MAPBOX.DEFAULT_ZOOM,
-                animationDuration: 1500,
-                centerCoordinate: [currentPosition.longitude, currentPosition.latitude],
-            });
-        }, [currentPosition, shouldPanMapToCurrentPosition]);
+        //     cameraRef.current.setCamera({
+        //         zoomLevel: CONST.MAPBOX.DEFAULT_ZOOM,
+        //         animationDuration: 1500,
+        //         centerCoordinate: [currentPosition.longitude, currentPosition.latitude],
+        //     });
+        // }, [currentPosition, shouldPanMapToCurrentPosition]);
 
-        useImperativeHandle(
-            ref,
-            () => ({
-                flyTo: (location: [number, number], zoomLevel: number = CONST.MAPBOX.DEFAULT_ZOOM, animationDuration?: number) =>
-                    cameraRef.current?.setCamera({zoomLevel, centerCoordinate: location, animationDuration}),
-                fitBounds: (northEast: [number, number], southWest: [number, number], paddingConfig?: number | number[] | undefined, animationDuration?: number | undefined) =>
-                    cameraRef.current?.fitBounds(northEast, southWest, paddingConfig, animationDuration),
-            }),
-            [],
-        );
+        // useImperativeHandle(
+        //     ref,
+        //     () => ({
+        //         flyTo: (location: [number, number], zoomLevel: number = CONST.MAPBOX.DEFAULT_ZOOM, animationDuration?: number) =>
+        //             cameraRef.current?.setCamera({zoomLevel, centerCoordinate: location, animationDuration}),
+        //         fitBounds: (northEast: [number, number], southWest: [number, number], paddingConfig?: number | number[] | undefined, animationDuration?: number | undefined) =>
+        //             cameraRef.current?.fitBounds(northEast, southWest, paddingConfig, animationDuration),
+        //     }),
+        //     [],
+        // );
 
         // When the page loses focus, we temporarily set the "idled" state to false.
         // When the page regains focus, the onIdled method of the map will set the actual "idled" state,
         // which in turn triggers the callback.
-        useFocusEffect(
-            useCallback(() => {
-                if (!waypoints || waypoints.length === 0 || !isIdle) {
-                    return;
-                }
+        // useFocusEffect(
+        //     useCallback(() => {
+        //         if (!waypoints || waypoints.length === 0 || !isIdle) {
+        //             return;
+        //         }
 
-                if (waypoints.length === 1) {
-                    cameraRef.current?.setCamera({
-                        zoomLevel: CONST.MAPBOX.SINGLE_MARKER_ZOOM,
-                        animationDuration: 1500,
-                        centerCoordinate: waypoints[0].coordinate,
-                    });
-                } else {
-                    const {southWest, northEast} = utils.getBounds(
-                        waypoints.map((waypoint) => waypoint.coordinate),
-                        directionCoordinates,
-                    );
-                    cameraRef.current?.fitBounds(northEast, southWest, mapPadding, 1000);
-                }
-            }, [mapPadding, waypoints, isIdle, directionCoordinates]),
-        );
+        //         if (waypoints.length === 1) {
+        //             cameraRef.current?.setCamera({
+        //                 zoomLevel: CONST.MAPBOX.SINGLE_MARKER_ZOOM,
+        //                 animationDuration: 1500,
+        //                 centerCoordinate: waypoints[0].coordinate,
+        //             });
+        //         } else {
+        //             const {southWest, northEast} = utils.getBounds(
+        //                 waypoints.map((waypoint) => waypoint.coordinate),
+        //                 directionCoordinates,
+        //             );
+        //             cameraRef.current?.fitBounds(northEast, southWest, mapPadding, 1000);
+        //         }
+        //     }, [mapPadding, waypoints, isIdle, directionCoordinates]),
+        // );
 
         useEffect(() => {
             const unsubscribe = navigation.addListener('blur', () => {
@@ -126,25 +127,26 @@ const MapView = forwardRef<MapViewHandle, ComponentProps>(
             return unsubscribe;
         }, [navigation]);
 
-        useEffect(() => {
-            setAccessToken(accessToken);
-        }, [accessToken]);
+        // useEffect(() => {
+        //     setAccessToken(accessToken);
+        // }, [accessToken]);
 
-        const setMapIdle = (e: MapState) => {
-            if (e.gestures.isGestureActive) {
-                return;
-            }
-            setIsIdle(true);
-            if (onMapReady) {
-                onMapReady();
-            }
-        };
+        // const setMapIdle = (e: MapState) => {
+        //     if (e.gestures.isGestureActive) {
+        //         return;
+        //     }
+        //     setIsIdle(true);
+        //     if (onMapReady) {
+        //         onMapReady();
+        //     }
+        // };
 
         return (
             <>
                 {!isOffline && Boolean(accessToken) && Boolean(currentPosition) ? (
                     <View style={style}>
-                        <Mapbox.MapView
+                        <Text>Test</Text>
+                        {/* <Mapbox.MapView
                             style={{flex: 1}}
                             styleURL={styleURL}
                             onMapIdle={setMapIdle}
@@ -178,7 +180,7 @@ const MapView = forwardRef<MapViewHandle, ComponentProps>(
                             })}
 
                             {directionCoordinates && <Direction coordinates={directionCoordinates} />}
-                        </Mapbox.MapView>
+                        </Mapbox.MapView> */}
                     </View>
                 ) : (
                     <PendingMapView

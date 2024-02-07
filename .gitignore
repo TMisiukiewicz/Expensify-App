@@ -120,3 +120,5 @@ config/webpack/*.pem
 .expo
 dist/
 web-build/
+
+visionos/Pods

@@ -1,5 +1,6 @@
 const {getDefaultConfig} = require('expo/metro-config');
 const {mergeConfig} = require('@react-native/metro-config');
+const {getPlatformResolver} = require('@callstack/out-of-tree-platforms');
 const defaultAssetExts = require('metro-config/src/defaults/defaults').assetExts;
 const defaultSourceExts = require('metro-config/src/defaults/defaults').sourceExts;
 require('dotenv').config();
@@ -20,6 +21,9 @@ const config = {
         assetExts: [...defaultAssetExts, 'lottie'],
         // When we run the e2e tests we want files that have the extension e2e.js to be resolved as source files
         sourceExts: [...(isE2ETesting ? e2eSourceExts : []), ...defaultSourceExts, 'jsx'],
+        resolveRequest: getPlatformResolver({
+            platformNameMap: {visionos: '@callstack/react-native-visionos'},
+          }),
     },
 };
 

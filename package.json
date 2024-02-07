@@ -14,6 +14,7 @@
     "clean": "npx react-native clean-project-auto",
     "android": "scripts/set-pusher-suffix.sh && npx react-native run-android --mode=developmentDebug --appId=com.expensify.chat.dev",
     "ios": "scripts/set-pusher-suffix.sh && npx react-native run-ios --list-devices --mode=\"DebugDevelopment\" --scheme=\"New Expensify Dev\"",
+    "visionos": "react-native run-visionos",
     "pod-install": "cd ios && bundle exec pod install",
     "ipad": "concurrently \"npx react-native run-ios --simulator=\\\"iPad Pro (12.9-inch) (6th generation)\\\" --mode=\\\"DebugDevelopment\\\" --scheme=\\\"New Expensify Dev\\\"\"",
     "ipad-sm": "concurrently \"npx react-native run-ios --simulator=\\\"iPad Pro (11-inch) (4th generation)\\\" --mode=\\\"DebugDevelopment\\\" --scheme=\\\"New Expensify Dev\\\"\"",
@@ -58,6 +59,7 @@
     "setup-https": "mkcert -install && mkcert -cert-file config/webpack/certificate.pem -key-file config/webpack/key.pem dev.new.expensify.com localhost 127.0.0.1"
   },
   "dependencies": {
+    "@callstack/react-native-visionos": "0.73.3",
     "@dotlottie/react-player": "^1.6.3",
     "@expensify/react-native-live-markdown": "git+ssh://git@github.com/Expensify/react-native-live-markdown.git#2ed4240336e50abb4a7fa9ff6a3c180f8bc9ce5b",
     "@expo/metro-runtime": "~3.1.1",
@@ -88,7 +90,6 @@
     "@react-navigation/native": "6.1.8",
     "@react-navigation/stack": "6.3.16",
     "@react-ng/bounds-observer": "^0.2.1",
-    "@rnmapbox/maps": "^10.0.11",
     "@shopify/flash-list": "^1.6.3",
     "@ua/react-native-airship": "^15.3.1",
     "@vue/preload-webpack-plugin": "^2.0.0",
@@ -189,6 +190,7 @@
     "@babel/runtime": "^7.20.0",
     "@babel/traverse": "^7.22.20",
     "@babel/types": "^7.22.19",
+    "@callstack/out-of-tree-platforms": "0.73.3",
     "@dword-design/eslint-plugin-import-alias": "^4.0.8",
     "@electron/notarize": "^2.1.0",
     "@jest/globals": "^29.5.0",
@@ -320,5 +322,6 @@
   "engines": {
     "node": "20.10.0",
     "npm": "10.2.3"
-  }
+  },
+  "packageManager": "yarn@3.6.4"
 }

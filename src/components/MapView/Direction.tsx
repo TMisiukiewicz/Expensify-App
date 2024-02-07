@@ -1,4 +1,4 @@
-import Mapbox from '@rnmapbox/maps';
+// import Mapbox from '@rnmapbox/maps';
 import useThemeStyles from '@hooks/useThemeStyles';
 import type {DirectionProps} from './MapViewTypes';
 
@@ -8,24 +8,7 @@ function Direction({coordinates}: DirectionProps) {
         return null;
     }
 
-    return (
-        <Mapbox.ShapeSource
-            id="routeSource"
-            shape={{
-                type: 'Feature',
-                properties: {},
-                geometry: {
-                    type: 'LineString',
-                    coordinates,
-                },
-            }}
-        >
-            <Mapbox.LineLayer
-                id="routeFill"
-                style={styles.mapDirection}
-            />
-        </Mapbox.ShapeSource>
-    );
+    return <></>;
 }
 
 Direction.displayName = 'Direction';
