@@ -431,7 +431,8 @@ function getOptionData({
     result.participantsList = participantPersonalDetailList;
 
     result.icons = ReportUtils.getIcons(report, personalDetails, UserUtils.getAvatar(personalDetail?.avatar ?? {}, personalDetail?.accountID), '', -1, policy);
-    result.searchText = OptionsListUtils.getSearchText(report, reportName, participantPersonalDetailList, result.isChatRoom || result.isPolicyExpenseChat, result.isThread);
+    // result.searchText = OptionsListUtils.getSearchText(report, reportName, participantPersonalDetailList, result.isChatRoom || result.isPolicyExpenseChat, result.isThread);
+    result.searchText = '';
     result.displayNamesWithTooltips = displayNamesWithTooltips;
 
     if (status) {
