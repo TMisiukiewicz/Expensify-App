@@ -5,6 +5,8 @@ import lodashGet from 'lodash/get';
 import lodashOrderBy from 'lodash/orderBy';
 import lodashSet from 'lodash/set';
 import lodashSortBy from 'lodash/sortBy';
+import {matchSorter} from 'match-sorter';
+import type {ReactElement} from 'react';
 import Onyx from 'react-native-onyx';
 import type {OnyxCollection, OnyxEntry} from 'react-native-onyx';
 import CONST from '@src/CONST';
@@ -709,7 +711,7 @@ function createOption(
     result.text = reportName;
     // Disabling this line for safeness as nullish coalescing works only if the value is undefined or null
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    result.searchText = getSearchText(report, reportName, personalDetailList, !!result.isChatRoom || !!result.isPolicyExpenseChat, !!result.isThread);
+    // result.searchText = getSearchText(report, reportName, personalDetailList, !!result.isChatRoom || !!result.isPolicyExpenseChat, !!result.isThread);
     result.icons = ReportUtils.getIcons(
         report,
         personalDetails,
@@ -2009,6 +2011,28 @@ function formatSectionsFromSearchTerm(
     };
 }
 
+function filterOptions(options: GetOptions, searchValue = '') {
+    Performance.markStart('filter_options');
+    Timing.start('filter_options');
+    const reports = matchSorter(options.recentReports, searchValue, {
+        keys: ['text', 'subtitle', 'alternateText', 'participantsList.0.displayName', 'participantsList.0.firstName', 'participantsList.0.lastName', 'participantsList.0.login'],
+        threshold: matchSorter.rankings.CONTAINS,
+        keepDiacritics: true,
+    });
+
+    const personalDetails = matchSorter(options.personalDetails, searchValue, {
+        keys: ['login', 'displayName'],
+        threshold: matchSorter.rankings.CONTAINS,
+        keepDiacritics: true,
+    });
+    Performance.markEnd('filter_options');
+    Timing.end('filter_options');
+    return {
+        reports,
+        personalDetails,
+    };
+}
+
 export {
     addSMSDomainIfPhoneNumber,
     getAvatarsForAccountIDs,
@@ -2040,6 +2064,7 @@ export {
     formatSectionsFromSearchTerm,
     transformedTaxRates,
     getShareLogOptions,
+    filterOptions,
 };
 
 export type {MemberForList, CategorySection, GetOptions};

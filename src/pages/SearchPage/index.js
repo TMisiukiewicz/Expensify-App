@@ -63,10 +63,6 @@ function SearchPage({betas, reports, isSearchingForReports}) {
         Performance.markStart(CONST.TIMING.SEARCH_RENDER);
     }, []);
 
-    useEffect(() => {
-        Report.searchInServer(debouncedSearchValue.trim());
-    }, [debouncedSearchValue]);
-
     const {
         recentReports,
         personalDetails: localPersonalDetails,
@@ -81,10 +77,22 @@ function SearchPage({betas, reports, isSearchingForReports}) {
                 headerMessage: '',
             };
         }
-        const options = OptionsListUtils.getSearchOptions(reports, personalDetails, debouncedSearchValue.trim(), betas);
-        const header = OptionsListUtils.getHeaderMessage(options.recentReports.length + options.personalDetails.length !== 0, Boolean(options.userToInvite), debouncedSearchValue);
+        const options = OptionsListUtils.getSearchOptions(reports, personalDetails, '', betas);
+        const header = OptionsListUtils.getHeaderMessage(options.recentReports.length + options.personalDetails.length !== 0, Boolean(options.userToInvite), '');
         return {...options, headerMessage: header};
-    }, [debouncedSearchValue, reports, personalDetails, betas, isScreenTransitionEnd]);
+    }, [reports, personalDetails, betas, isScreenTransitionEnd]);
+
+    useEffect(() => {
+        Report.searchInServer(debouncedSearchValue.trim());
+    }, [debouncedSearchValue]);
+
+    useEffect(() => {
+        if(debouncedSearchValue.trim() === '') {
+            return;
+        }
+
+        OptionsListUtils.filterOptions({recentReports, personalDetails: localPersonalDetails}, debouncedSearchValue);
+    }, [debouncedSearchValue, localPersonalDetails, recentReports])
 
     const sections = useMemo(() => {
         const newSections = [];
