@@ -1632,6 +1632,7 @@ function getOptions(
     if (sortByReportTypeInSearch && searchValue !== '') {
         // When sortByReportTypeInSearch is true, recentReports will be returned with all the reports including personalDetailsOptions in the correct Order.
         recentReportOptions.push(...personalDetailsOptions);
+
         personalDetailsOptions = [];
         recentReportOptions = lodashOrderBy(
             recentReportOptions,
@@ -1976,42 +1977,37 @@ function formatSectionsFromSearchTerm(
 function filterOptions(options: GetOptions, searchValue = '') {
     Performance.markStart('filter_options');
     Timing.start('filter_options');
-    const personalDetails = matchSorter(options.personalDetails, searchValue, {
-        keys: ['login', 'displayName', 'text', 'alternateText', 'email'],
+    const reports = matchSorter([...options.recentReports, ...options.personalDetails], searchValue, {
+        keys: [
+            'text',
+            'subtitle',
+            'alternateText',
+            'participantsList.*.displayName',
+            'participantsList.*.firstName',
+            'participantsList.*.lastName',
+            'participantsList.*.login',
+            'participantsList.*.phoneNumber',
+        ],
         keepDiacritics: true,
-        baseSort: (a, b) => {
-            if (a.rankedValue.toLowerCase() === b.rankedValue.toLowerCase()) {
-                return 0;
+        baseSort: (optionA) => {
+            if (!!optionA.isChatRoom || optionA.isArchivedRoom) {
+                return -5;
+            }
+            if (!optionA.login) {
+                return 1;
+            }
+            if (optionA.login.toLowerCase() !== searchValue.toLowerCase()) {
+                return 2;
             }
 
-            if (a.rankedValue.toLowerCase() < b.rankedValue.toLowerCase()) {
-                return -1;
-            }
-
-            return 1;
-        },
-    });
-
-    const reports = matchSorter(options.recentReports, searchValue, {
-        keys: ['text', 'subtitle', 'alternateText', 'participantsList.displayName', 'participantsList.firstName', 'participantsList.lastName', 'participantsList.login'],
-        keepDiacritics: true,
-        baseSort: (a, b) => {
-            if (a.rankedValue.toLowerCase() === b.rankedValue.toLowerCase()) {
-                return 0;
-            }
-
-            if (a.rankedValue.toLowerCase() < b.rankedValue.toLowerCase()) {
-                return -1;
-            }
-
-            return 1;
+            return 0;
         },
     });
     Performance.markEnd('filter_options');
     Timing.end('filter_options');
     return {
         recentReports: reports,
-        personalDetails,
+        personalDetails: [],
     };
 }
 
