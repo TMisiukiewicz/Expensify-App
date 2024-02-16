@@ -364,31 +364,6 @@ function getParticipantsOption(participant: ReportUtils.OptionData, personalDeta
 }
 
 /**
- * Constructs a Set with all possible names (displayName, firstName, lastName, email) for all participants in a report,
- * to be used in isSearchStringMatch.
- */
-function getParticipantNames(personalDetailList?: Array<Partial<PersonalDetails>> | null): Set<string> {
-    // We use a Set because `Set.has(value)` on a Set of with n entries is up to n (or log(n)) times faster than
-    // `_.contains(Array, value)` for an Array with n members.
-    const participantNames = new Set<string>();
-    personalDetailList?.forEach((participant) => {
-        if (participant.login) {
-            participantNames.add(participant.login.toLowerCase());
-        }
-        if (participant.firstName) {
-            participantNames.add(participant.firstName.toLowerCase());
-        }
-        if (participant.lastName) {
-            participantNames.add(participant.lastName.toLowerCase());
-        }
-        if (participant.displayName) {
-            participantNames.add(PersonalDetailsUtils.getDisplayNameOrDefault(participant).toLowerCase());
-        }
-    });
-    return participantNames;
-}
-
-/**
  * A very optimized method to remove duplicates from an array.
  * Taken from https://stackoverflow.com/a/9229821/9114791
  */
@@ -1571,17 +1546,13 @@ function getOptions(
             }
 
             // Finally check to see if this option is a match for the provided search string if we have one
-            const {searchText, participantsList, isChatRoom} = reportOption;
-            const participantNames = getParticipantNames(participantsList);
+            const {isChatRoom} = reportOption;
 
             if (searchValue) {
                 // Determine if the search is happening within a chat room and starts with the report ID
                 const isReportIdSearch = isChatRoom && Str.startsWith(reportOption.reportID ?? '', searchValue);
 
-                // Check if the search string matches the search text or participant names considering the type of the room
-                const isSearchMatch = isSearchStringMatch(searchValue, searchText, participantNames, isChatRoom);
-
-                if (!isReportIdSearch && !isSearchMatch) {
+                if (!isReportIdSearch) {
                     continue;
                 }
             }
@@ -1603,20 +1574,12 @@ function getOptions(
             if (optionsToExclude.some((optionToExclude) => optionToExclude.login === personalDetailOption.login)) {
                 return;
             }
-            const {searchText, participantsList, isChatRoom} = personalDetailOption;
-            const participantNames = getParticipantNames(participantsList);
-            if (searchValue && !isSearchStringMatch(searchValue, searchText, participantNames, isChatRoom)) {
-                return;
-            }
 
             personalDetailsOptions.push(personalDetailOption);
         });
     }
 
-    let currentUserOption = allPersonalDetailsOptions.find((personalDetailsOption) => personalDetailsOption.login === currentUserLogin);
-    if (searchValue && currentUserOption && !isSearchStringMatch(searchValue, currentUserOption.searchText)) {
-        currentUserOption = undefined;
-    }
+    const currentUserOption = allPersonalDetailsOptions.find((personalDetailsOption) => personalDetailsOption.login === currentUserLogin);
 
     let userToInvite: ReportUtils.OptionData | null = null;
     const noOptions = recentReportOptions.length + personalDetailsOptions.length === 0 && !currentUserOption;
@@ -1989,10 +1952,9 @@ function formatSectionsFromSearchTerm(
     // This will add them to the list of options, deduping them if they already exist in the other lists
     const selectedParticipantsWithoutDetails = selectedOptions.filter((participant) => {
         const accountID = participant.accountID ?? null;
-        const isPartOfSearchTerm = participant.searchText?.toLowerCase().includes(searchTerm.trim().toLowerCase());
         const isReportInRecentReports = filteredRecentReports.some((report) => report.accountID === accountID);
         const isReportInPersonalDetails = filteredPersonalDetails.some((personalDetail) => personalDetail.accountID === accountID);
-        return isPartOfSearchTerm && !isReportInRecentReports && !isReportInPersonalDetails;
+        return !isReportInRecentReports && !isReportInPersonalDetails;
     });
 
     return {
@@ -2014,8 +1976,8 @@ function formatSectionsFromSearchTerm(
 function filterOptions(options: GetOptions, searchValue = '') {
     Performance.markStart('filter_options');
     Timing.start('filter_options');
-    const reports = matchSorter(options.recentReports, searchValue, {
-        keys: ['text', 'subtitle', 'alternateText', 'participantsList.displayName', 'participantsList.firstName', 'participantsList.lastName', 'participantsList.login'],
+    const personalDetails = matchSorter(options.personalDetails, searchValue, {
+        keys: ['login', 'displayName', 'text', 'alternateText', 'email'],
         keepDiacritics: true,
         baseSort: (a, b) => {
             if (a.rankedValue.toLowerCase() === b.rankedValue.toLowerCase()) {
@@ -2030,8 +1992,8 @@ function filterOptions(options: GetOptions, searchValue = '') {
         },
     });
 
-    const personalDetails = matchSorter(options.personalDetails, searchValue, {
-        keys: ['login', 'displayName', 'text', 'alternateText'],
+    const reports = matchSorter(options.recentReports, searchValue, {
+        keys: ['text', 'subtitle', 'alternateText', 'participantsList.displayName', 'participantsList.firstName', 'participantsList.lastName', 'participantsList.login'],
         keepDiacritics: true,
         baseSort: (a, b) => {
             if (a.rankedValue.toLowerCase() === b.rankedValue.toLowerCase()) {
