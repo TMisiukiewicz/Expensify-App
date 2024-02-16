@@ -1977,36 +1977,72 @@ function formatSectionsFromSearchTerm(
 function filterOptions(options: GetOptions, searchValue = '') {
     Performance.markStart('filter_options');
     Timing.start('filter_options');
-    const reports = matchSorter([...options.recentReports, ...options.personalDetails], searchValue, {
-        keys: [
-            'text',
-            'subtitle',
-            'alternateText',
-            'participantsList.*.displayName',
-            'participantsList.*.firstName',
-            'participantsList.*.lastName',
-            'participantsList.*.login',
-            'participantsList.*.phoneNumber',
-        ],
-        keepDiacritics: true,
-        baseSort: (optionA) => {
-            if (!!optionA.isChatRoom || optionA.isArchivedRoom) {
-                return -5;
-            }
-            if (!optionA.login) {
-                return 1;
-            }
-            if (optionA.login.toLowerCase() !== searchValue.toLowerCase()) {
-                return 2;
+    const reportsByType = options.recentReports.reduce(
+        (acc, option) => {
+            if (option.isChatRoom) {
+                acc.chatRooms.push(option);
+            } else if (option.isPolicyExpenseChat) {
+                acc.policyExpenseChats.push(option);
+            } else {
+                acc.reports.push(option);
             }
 
-            return 0;
+            return acc;
         },
+        {
+            chatRooms: [],
+            policyExpenseChats: [],
+            reports: [],
+        },
+    );
+    const personalDetails = matchSorter(options.personalDetails, searchValue, {
+        keys: ['text', 'login', 'participantsList[0].displayName', 'participantsList[0].firstName', 'participantsList[0].lastName'],
+        threshold: matchSorter.rankings.CONTAINS,
+        keepDiacritics: true,
     });
+
+    const chatRooms = matchSorter(reportsByType.chatRooms, searchValue, {
+        keys: ['text', 'alternateText'],
+        threshold: matchSorter.rankings.CONTAINS,
+        keepDiacritics: true,
+    });
+
+    const policyExpenseChats = matchSorter(reportsByType.policyExpenseChats, searchValue, {
+        keys: ['text'],
+        threshold: matchSorter.rankings.CONTAINS,
+        keepDiacritics: true,
+    });
+    const reports = matchSorter(reportsByType.reports, searchValue, {
+        keys: ['participantsList.*.login', 'participantsList.*.displayName', 'participantsList.*.firstName', 'participantsList.*.lastName', 'text'],
+        keepDiacritics: true,
+    });
+
+    let recentReportOptions = [...reports, ...personalDetails, ...chatRooms, ...policyExpenseChats];
+    recentReportOptions = lodashOrderBy(
+        recentReportOptions,
+        [
+            (option) => {
+                if (!!option.isChatRoom || option.isArchivedRoom) {
+                    return 3;
+                }
+                if (!option.login) {
+                    return 2;
+                }
+                if (option.login.toLowerCase() !== searchValue?.toLowerCase()) {
+                    return 1;
+                }
+
+                // When option.login is an exact match with the search value, returning 0 puts it at the top of the option list
+                return 0;
+            },
+        ],
+        ['asc'],
+    );
+
     Performance.markEnd('filter_options');
     Timing.end('filter_options');
     return {
-        recentReports: reports,
+        recentReports: recentReportOptions,
         personalDetails: [],
     };
 }

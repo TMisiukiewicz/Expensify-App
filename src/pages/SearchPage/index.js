@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import React, {useEffect, useMemo, useState} from 'react';
 import {View} from 'react-native';
 import {withOnyx} from 'react-native-onyx';
+import _ from 'underscore';
 import HeaderWithBackButton from '@components/HeaderWithBackButton';
 import {usePersonalDetails} from '@components/OnyxProvider';
 import ScreenWrapper from '@components/ScreenWrapper';
@@ -19,7 +20,6 @@ import * as Report from '@userActions/Report';
 import Timing from '@userActions/Timing';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
-import _ from 'underscore';
 import SearchPageFooter from './SearchPageFooter';
 
 const propTypes = {
@@ -90,24 +90,24 @@ function SearchPage({betas, reports, isSearchingForReports}) {
     }, [debouncedSearchValue]);
 
     useEffect(() => {
-        if(debouncedSearchValue.trim() === '') {
+        if (debouncedSearchValue.trim() === '') {
             setFilteredOptions({});
-            
+
             return;
         }
 
         const filteredResult = OptionsListUtils.filterOptions({recentReports, personalDetails: localPersonalDetails, betas}, debouncedSearchValue);
         setFilteredOptions(filteredResult);
-    }, [betas, debouncedSearchValue, localPersonalDetails, recentReports])
+    }, [betas, debouncedSearchValue, localPersonalDetails, recentReports]);
 
     const sections = useMemo(() => {
         let data = {
             recentReports,
             personalDetails: localPersonalDetails,
             userToInvite,
-        }
+        };
 
-        if(!_.isEmpty(filteredOptions)) {
+        if (!_.isEmpty(filteredOptions)) {
             data = filteredOptions;
         }
 
