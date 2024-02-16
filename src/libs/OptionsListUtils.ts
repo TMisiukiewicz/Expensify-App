@@ -2014,21 +2014,44 @@ function formatSectionsFromSearchTerm(
 function filterOptions(options: GetOptions, searchValue = '') {
     Performance.markStart('filter_options');
     Timing.start('filter_options');
+
     const reports = matchSorter(options.recentReports, searchValue, {
         keys: ['text', 'subtitle', 'alternateText', 'participantsList.0.displayName', 'participantsList.0.firstName', 'participantsList.0.lastName', 'participantsList.0.login'],
         threshold: matchSorter.rankings.CONTAINS,
         keepDiacritics: true,
+        baseSort: (a, b) => {
+            if (a.rankedValue.toLowerCase() === b.rankedValue.toLowerCase()) {
+                return 0;
+            }
+
+            if (a.rankedValue.toLowerCase() < b.rankedValue.toLowerCase()) {
+                return -1;
+            }
+
+            return 1;
+        },
     });
 
     const personalDetails = matchSorter(options.personalDetails, searchValue, {
         keys: ['login', 'displayName'],
         threshold: matchSorter.rankings.CONTAINS,
         keepDiacritics: true,
+        baseSort: (a, b) => {
+            if (a.rankedValue.toLowerCase() === b.rankedValue.toLowerCase()) {
+                return 0;
+            }
+
+            if (a.rankedValue.toLowerCase() < b.rankedValue.toLowerCase()) {
+                return -1;
+            }
+
+            return 1;
+        },
     });
     Performance.markEnd('filter_options');
     Timing.end('filter_options');
     return {
-        reports,
+        recentReports: reports,
         personalDetails,
     };
 }
