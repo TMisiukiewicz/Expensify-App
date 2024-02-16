@@ -5,6 +5,7 @@ import lodashGet from 'lodash/get';
 import lodashOrderBy from 'lodash/orderBy';
 import lodashSet from 'lodash/set';
 import lodashSortBy from 'lodash/sortBy';
+import {matchSorter} from 'match-sorter';
 import type {ReactElement} from 'react';
 import Onyx from 'react-native-onyx';
 import type {OnyxCollection, OnyxEntry} from 'react-native-onyx';
@@ -20,6 +21,7 @@ import type {
     PolicyCategories,
     PolicyCategory,
     PolicyTag,
+    PolicyTagList,
     Report,
     ReportAction,
     ReportActions,
@@ -122,11 +124,11 @@ type MemberForList = {
     keyForList: string;
     isSelected: boolean;
     isDisabled: boolean;
-    accountID?: number;
+    accountID?: number | null;
     login: string;
-    rightElement: ReactElement | null;
     icons?: OnyxCommon.Icon[];
     pendingAction?: OnyxCommon.PendingAction;
+    reportID: string;
 };
 
 type SectionForSearchTerm = {
@@ -362,31 +364,6 @@ function getParticipantsOption(participant: ReportUtils.OptionData, personalDeta
 }
 
 /**
- * Constructs a Set with all possible names (displayName, firstName, lastName, email) for all participants in a report,
- * to be used in isSearchStringMatch.
- */
-function getParticipantNames(personalDetailList?: Array<Partial<PersonalDetails>> | null): Set<string> {
-    // We use a Set because `Set.has(value)` on a Set of with n entries is up to n (or log(n)) times faster than
-    // `_.contains(Array, value)` for an Array with n members.
-    const participantNames = new Set<string>();
-    personalDetailList?.forEach((participant) => {
-        if (participant.login) {
-            participantNames.add(participant.login.toLowerCase());
-        }
-        if (participant.firstName) {
-            participantNames.add(participant.firstName.toLowerCase());
-        }
-        if (participant.lastName) {
-            participantNames.add(participant.lastName.toLowerCase());
-        }
-        if (participant.displayName) {
-            participantNames.add(PersonalDetailsUtils.getDisplayNameOrDefault(participant).toLowerCase());
-        }
-    });
-    return participantNames;
-}
-
-/**
  * A very optimized method to remove duplicates from an array.
  * Taken from https://stackoverflow.com/a/9229821/9114791
  */
@@ -562,7 +539,7 @@ function getLastMessageTextForReport(report: OnyxEntry<Report>, lastActorDetails
     } else if (ReportActionUtils.isReimbursementQueuedAction(lastReportAction)) {
         lastMessageTextFromReport = ReportUtils.getReimbursementQueuedActionMessage(lastReportAction, report);
     } else if (ReportActionUtils.isReimbursementDeQueuedAction(lastReportAction)) {
-        lastMessageTextFromReport = ReportUtils.getReimbursementDeQueuedActionMessage(report);
+        lastMessageTextFromReport = ReportUtils.getReimbursementDeQueuedActionMessage(lastReportAction, report);
     } else if (ReportActionUtils.isDeletedParentAction(lastReportAction) && ReportUtils.isChatReport(report)) {
         lastMessageTextFromReport = ReportUtils.getDeletedParentActionMessageForChatReport(lastReportAction);
     } else if (ReportActionUtils.isPendingRemove(lastReportAction) && ReportActionUtils.isThreadParentMessage(lastReportAction, report?.reportID ?? '')) {
@@ -709,7 +686,6 @@ function createOption(
     result.text = reportName;
     // Disabling this line for safeness as nullish coalescing works only if the value is undefined or null
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    result.searchText = '';
     // result.searchText = getSearchText(report, reportName, personalDetailList, !!result.isChatRoom || !!result.isPolicyExpenseChat, !!result.isThread);
     result.icons = ReportUtils.getIcons(
         report,
@@ -1117,7 +1093,7 @@ function getTagListSections(tags: Tag[], recentlyUsedTags: string[], selectedOpt
         .map((tag) => ({name: tag, enabled: true}));
     const filteredTags = enabledTags.filter((tag) => !selectedOptionNames.includes(tag.name));
 
-    if (selectedOptions) {
+    if (selectedOptions.length) {
         const selectedTagOptions = selectedOptions.map((option) => {
             const tagObject = tags.find((tag) => tag.name === option.name);
             return {
@@ -1160,6 +1136,15 @@ function getTagListSections(tags: Tag[], recentlyUsedTags: string[], selectedOpt
     });
 
     return tagSections;
+}
+
+/**
+ * Verifies that there is at least one enabled tag
+ */
+function hasEnabledTags(policyTagList: Array<PolicyTagList[keyof PolicyTagList]>) {
+    const policyTagValueList = policyTagList.map(({tags}) => Object.values(tags)).flat();
+
+    return hasEnabledOptions(policyTagValueList);
 }
 
 type PolicyTaxRateWithDefault = {
@@ -1561,17 +1546,13 @@ function getOptions(
             }
 
             // Finally check to see if this option is a match for the provided search string if we have one
-            const {searchText, participantsList, isChatRoom} = reportOption;
-            const participantNames = getParticipantNames(participantsList);
+            const {isChatRoom} = reportOption;
 
             if (searchValue) {
                 // Determine if the search is happening within a chat room and starts with the report ID
                 const isReportIdSearch = isChatRoom && Str.startsWith(reportOption.reportID ?? '', searchValue);
 
-                // Check if the search string matches the search text or participant names considering the type of the room
-                const isSearchMatch = isSearchStringMatch(searchValue, searchText, participantNames, isChatRoom);
-
-                if (!isReportIdSearch && !isSearchMatch) {
+                if (!isReportIdSearch) {
                     continue;
                 }
             }
@@ -1593,20 +1574,12 @@ function getOptions(
             if (optionsToExclude.some((optionToExclude) => optionToExclude.login === personalDetailOption.login)) {
                 return;
             }
-            const {searchText, participantsList, isChatRoom} = personalDetailOption;
-            const participantNames = getParticipantNames(participantsList);
-            if (searchValue && !isSearchStringMatch(searchValue, searchText, participantNames, isChatRoom)) {
-                return;
-            }
 
             personalDetailsOptions.push(personalDetailOption);
         });
     }
 
-    let currentUserOption = allPersonalDetailsOptions.find((personalDetailsOption) => personalDetailsOption.login === currentUserLogin);
-    if (searchValue && currentUserOption && !isSearchStringMatch(searchValue, currentUserOption.searchText)) {
-        currentUserOption = undefined;
-    }
+    const currentUserOption = allPersonalDetailsOptions.find((personalDetailsOption) => personalDetailsOption.login === currentUserLogin);
 
     let userToInvite: ReportUtils.OptionData | null = null;
     const noOptions = recentReportOptions.length + personalDetailsOptions.length === 0 && !currentUserOption;
@@ -1659,6 +1632,7 @@ function getOptions(
     if (sortByReportTypeInSearch && searchValue !== '') {
         // When sortByReportTypeInSearch is true, recentReports will be returned with all the reports including personalDetailsOptions in the correct Order.
         recentReportOptions.push(...personalDetailsOptions);
+
         personalDetailsOptions = [];
         recentReportOptions = lodashOrderBy(
             recentReportOptions,
@@ -1718,6 +1692,19 @@ function getSearchOptions(reports: Record<string, Report>, personalDetails: Onyx
     Performance.markEnd(CONST.TIMING.LOAD_SEARCH_OPTIONS);
 
     return options;
+}
+
+function getShareLogOptions(reports: OnyxCollection<Report>, personalDetails: OnyxEntry<PersonalDetailsList>, searchValue = '', betas: Beta[] = []): GetOptions {
+    return getOptions(reports, personalDetails, {
+        betas,
+        searchInputValue: searchValue.trim(),
+        includeRecentReports: true,
+        includeMultipleParticipantReports: true,
+        sortByReportTypeInSearch: true,
+        includePersonalDetails: true,
+        forcePolicyNamePreview: true,
+        includeOwnedWorkspaceChats: true,
+    });
 }
 
 /**
@@ -1838,14 +1825,8 @@ function getShareDestinationOptions(
  * @param member - personalDetails or userToInvite
  * @param config - keys to overwrite the default values
  */
-function formatMemberForList(member: ReportUtils.OptionData, config?: Partial<MemberForList>): MemberForList;
-function formatMemberForList(member: null | undefined, config?: Partial<MemberForList>): undefined;
-function formatMemberForList(member: ReportUtils.OptionData | null | undefined, config: Partial<MemberForList> = {}): MemberForList | undefined {
-    if (!member) {
-        return undefined;
-    }
-
-    const accountID = member.accountID ?? undefined;
+function formatMemberForList(member: ReportUtils.OptionData): MemberForList {
+    const accountID = member.accountID;
 
     return {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -1854,14 +1835,13 @@ function formatMemberForList(member: ReportUtils.OptionData | null | undefined, 
         alternateText: member.alternateText || member.login || '',
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         keyForList: member.keyForList || String(accountID ?? 0) || '',
-        isSelected: false,
-        isDisabled: false,
+        isSelected: member.isSelected ?? false,
+        isDisabled: member.isDisabled ?? false,
         accountID,
         login: member.login ?? '',
-        rightElement: null,
         icons: member.icons,
         pendingAction: member.pendingAction,
-        ...config,
+        reportID: member.reportID,
     };
 }
 
@@ -1973,10 +1953,9 @@ function formatSectionsFromSearchTerm(
     // This will add them to the list of options, deduping them if they already exist in the other lists
     const selectedParticipantsWithoutDetails = selectedOptions.filter((participant) => {
         const accountID = participant.accountID ?? null;
-        const isPartOfSearchTerm = participant.searchText?.toLowerCase().includes(searchTerm.trim().toLowerCase());
         const isReportInRecentReports = filteredRecentReports.some((report) => report.accountID === accountID);
         const isReportInPersonalDetails = filteredPersonalDetails.some((personalDetail) => personalDetail.accountID === accountID);
-        return isPartOfSearchTerm && !isReportInRecentReports && !isReportInPersonalDetails;
+        return !isReportInRecentReports && !isReportInPersonalDetails;
     });
 
     return {
@@ -1992,6 +1971,116 @@ function formatSectionsFromSearchTerm(
             indexOffset,
         },
         newIndexOffset: indexOffset + selectedParticipantsWithoutDetails.length,
+    };
+}
+
+function filterOptions(options: GetOptions, searchValue = '') {
+    Performance.markStart('filter_options');
+    Timing.start('filter_options');
+    const reportsByType = options.recentReports.reduce(
+        (acc, option) => {
+            if (option.isChatRoom) {
+                acc.chatRooms.push(option);
+            } else if (option.isPolicyExpenseChat) {
+                acc.policyExpenseChats.push(option);
+            } else {
+                acc.reports.push(option);
+            }
+
+            return acc;
+        },
+        {
+            chatRooms: [],
+            policyExpenseChats: [],
+            reports: [],
+        },
+    );
+    const personalDetails = matchSorter(options.personalDetails, searchValue, {
+        keys: ['text', 'login', 'participantsList[0].displayName', 'participantsList[0].firstName', 'participantsList[0].lastName'],
+        sorter: (matchItems) => {
+            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
+            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+
+            if (hasTightMatches) {
+                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+            }
+
+            return matchItems;
+        },
+        keepDiacritics: true,
+    });
+
+    const chatRooms = matchSorter(reportsByType.chatRooms, searchValue, {
+        keys: ['text', 'alternateText'],
+        sorter: (matchItems) => {
+            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
+            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+
+            if (hasTightMatches) {
+                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+            }
+
+            return matchItems;
+        },
+        keepDiacritics: true,
+    });
+
+    const policyExpenseChats = matchSorter(reportsByType.policyExpenseChats, searchValue, {
+        keys: ['text'],
+        sorter: (matchItems) => {
+            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
+            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+
+            if (hasTightMatches) {
+                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+            }
+
+            return matchItems;
+        },
+        keepDiacritics: true,
+    });
+    const reports = matchSorter(reportsByType.reports, searchValue, {
+        keys: ['participantsList.*.login', 'participantsList.*.displayName', 'participantsList.*.firstName', 'participantsList.*.lastName', 'text'],
+        sorter: (matchItems) => {
+            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
+            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+
+            if (hasTightMatches) {
+                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+            }
+
+            return matchItems;
+        },
+        keepDiacritics: true,
+    });
+
+    let recentReportOptions = [...reports, ...personalDetails, ...chatRooms, ...policyExpenseChats];
+    recentReportOptions = lodashOrderBy(
+        recentReportOptions,
+        [
+            (option) => {
+                if (!!option.isChatRoom || option.isArchivedRoom) {
+                    return 3;
+                }
+                if (!option.login) {
+                    return 2;
+                }
+                if (option.login.toLowerCase() !== searchValue?.toLowerCase()) {
+                    return 1;
+                }
+
+                // When option.login is an exact match with the search value, returning 0 puts it at the top of the option list
+                return 0;
+            },
+        ],
+        ['asc'],
+    );
+
+    Performance.markEnd('filter_options');
+    Timing.end('filter_options');
+    return {
+        recentReports: recentReportOptions,
+        personalDetails: [],
     };
 }
 
@@ -2021,9 +2110,12 @@ export {
     hasEnabledOptions,
     sortCategories,
     getCategoryOptionTree,
+    hasEnabledTags,
     formatMemberForList,
     formatSectionsFromSearchTerm,
     transformedTaxRates,
+    getShareLogOptions,
+    filterOptions,
 };
 
-export type {MemberForList, CategorySection};
+export type {MemberForList, CategorySection, GetOptions};

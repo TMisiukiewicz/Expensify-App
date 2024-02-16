@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import React, {useEffect, useMemo, useState} from 'react';
 import {View} from 'react-native';
 import {withOnyx} from 'react-native-onyx';
+import _ from 'underscore';
 import HeaderWithBackButton from '@components/HeaderWithBackButton';
 import {usePersonalDetails} from '@components/OnyxProvider';
 import ScreenWrapper from '@components/ScreenWrapper';
@@ -53,6 +54,12 @@ function SearchPage({betas, reports, isSearchingForReports}) {
     const {isOffline} = useNetwork();
     const themeStyles = useThemeStyles();
     const personalDetails = usePersonalDetails();
+    const [options, setOptions] = useState({
+        recentReports: [],
+        personalDetails: [],
+        betas: [],
+    });
+    const [filteredOptions, setFilteredOptions] = useState({});
 
     const offlineMessage = isOffline ? [`${translate('common.youAppearToBeOffline')} ${translate('search.resultsAreLimited')}`, {isTranslated: true}] : '';
 
@@ -63,61 +70,88 @@ function SearchPage({betas, reports, isSearchingForReports}) {
         Performance.markStart(CONST.TIMING.SEARCH_RENDER);
     }, []);
 
+    const {recentReports, personalDetails: localPersonalDetails, userToInvite, headerMessage} = options;
+    // } = useMemo(() => {
+    //     if (!isScreenTransitionEnd) {
+    //         return {
+    //             recentReports: {},
+    //             personalDetails: {},
+    //             userToInvite: {},
+    //             headerMessage: '',
+    //         };
+    //     }
+
+    //     const options = OptionsListUtils.getSearchOptions(reports, personalDetails, '', betas);
+    //     const header = OptionsListUtils.getHeaderMessage(options.recentReports.length + options.personalDetails.length !== 0, Boolean(options.userToInvite), '');
+    //     return {...options, headerMessage: header};
+    // }, [isScreenTransitionEnd, reports, personalDetails, betas]);
+
     useEffect(() => {
         Report.searchInServer(debouncedSearchValue.trim());
     }, [debouncedSearchValue]);
 
-    const {
-        recentReports,
-        personalDetails: localPersonalDetails,
-        userToInvite,
-        headerMessage,
-    } = useMemo(() => {
+    useEffect(() => {
         if (!isScreenTransitionEnd) {
-            return {
-                recentReports: {},
-                personalDetails: {},
-                userToInvite: {},
-                headerMessage: '',
-            };
+            return;
         }
-        const options = OptionsListUtils.getSearchOptions(reports, personalDetails, debouncedSearchValue.trim(), betas);
-        const header = OptionsListUtils.getHeaderMessage(options.recentReports.length + options.personalDetails.length !== 0, Boolean(options.userToInvite), debouncedSearchValue);
-        return {...options, headerMessage: header};
-    }, [debouncedSearchValue, reports, personalDetails, betas, isScreenTransitionEnd]);
+
+        const opts = OptionsListUtils.getSearchOptions(reports, personalDetails, '', betas);
+        setOptions(opts);
+    }, [isScreenTransitionEnd]);
+
+    useEffect(() => {
+        if (debouncedSearchValue.trim() === '') {
+            setFilteredOptions({});
+
+            return;
+        }
+
+        const filteredResult = OptionsListUtils.filterOptions({recentReports, personalDetails: localPersonalDetails, betas}, debouncedSearchValue);
+        setFilteredOptions(filteredResult);
+    }, [betas, debouncedSearchValue, localPersonalDetails, recentReports]);
 
     const sections = useMemo(() => {
+        let data = {
+            recentReports,
+            personalDetails: localPersonalDetails,
+            userToInvite,
+        };
+
+        if (!_.isEmpty(filteredOptions)) {
+            data = filteredOptions;
+        }
+
         const newSections = [];
         let indexOffset = 0;
 
-        if (recentReports.length > 0) {
+        if (data.recentReports.length > 0) {
             newSections.push({
-                data: recentReports,
+                data: data.recentReports,
                 shouldShow: true,
                 indexOffset,
             });
-            indexOffset += recentReports.length;
+            indexOffset += data.recentReports.length;
         }
 
-        if (localPersonalDetails.length > 0) {
+        if (data.personalDetails.length > 0) {
             newSections.push({
-                data: localPersonalDetails,
+                data: data.personalDetails,
                 shouldShow: true,
                 indexOffset,
             });
-            indexOffset += recentReports.length;
+            indexOffset += data.recentReports.length;
         }
 
-        if (userToInvite) {
+        if (data.userToInvite) {
             newSections.push({
-                data: [userToInvite],
+                data: [data.userToInvite],
                 shouldShow: true,
                 indexOffset,
             });
         }
 
         return newSections;
-    }, [localPersonalDetails, recentReports, userToInvite]);
+    }, [filteredOptions, localPersonalDetails, recentReports, userToInvite]);
 
     const selectReport = (option) => {
         if (!option) {
