@@ -91,6 +91,8 @@ function SearchPage({betas, reports, isSearchingForReports}) {
 
     useEffect(() => {
         if(debouncedSearchValue.trim() === '') {
+            setFilteredOptions({});
+            
             return;
         }
 
