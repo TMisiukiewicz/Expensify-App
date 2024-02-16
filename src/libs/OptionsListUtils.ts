@@ -1997,23 +1997,60 @@ function filterOptions(options: GetOptions, searchValue = '') {
     );
     const personalDetails = matchSorter(options.personalDetails, searchValue, {
         keys: ['text', 'login', 'participantsList[0].displayName', 'participantsList[0].firstName', 'participantsList[0].lastName'],
-        threshold: matchSorter.rankings.CONTAINS,
+        sorter: (matchItems) => {
+            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
+            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+
+            if (hasTightMatches) {
+                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+            }
+
+            return matchItems;
+        },
         keepDiacritics: true,
     });
 
     const chatRooms = matchSorter(reportsByType.chatRooms, searchValue, {
         keys: ['text', 'alternateText'],
-        threshold: matchSorter.rankings.CONTAINS,
+        sorter: (matchItems) => {
+            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
+            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+
+            if (hasTightMatches) {
+                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+            }
+
+            return matchItems;
+        },
         keepDiacritics: true,
     });
 
     const policyExpenseChats = matchSorter(reportsByType.policyExpenseChats, searchValue, {
         keys: ['text'],
-        threshold: matchSorter.rankings.CONTAINS,
+        sorter: (matchItems) => {
+            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
+            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+
+            if (hasTightMatches) {
+                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+            }
+
+            return matchItems;
+        },
         keepDiacritics: true,
     });
     const reports = matchSorter(reportsByType.reports, searchValue, {
         keys: ['participantsList.*.login', 'participantsList.*.displayName', 'participantsList.*.firstName', 'participantsList.*.lastName', 'text'],
+        sorter: (matchItems) => {
+            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
+            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+
+            if (hasTightMatches) {
+                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+            }
+
+            return matchItems;
+        },
         keepDiacritics: true,
     });
 
