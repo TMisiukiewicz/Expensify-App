@@ -18,7 +18,9 @@ import useKeyboardShortcut from '@hooks/useKeyboardShortcut';
 import useLocalize from '@hooks/useLocalize';
 import usePrevious from '@hooks/usePrevious';
 import useThemeStyles from '@hooks/useThemeStyles';
+import Timing from '@libs/actions/Timing';
 import Log from '@libs/Log';
+import Performance from '@libs/Performance';
 import variables from '@styles/variables';
 import CONST from '@src/CONST';
 import {isEmptyObject} from '@src/types/utils/EmptyObject';
@@ -359,6 +361,16 @@ function BaseSelectionList<TItem extends User | RadioItem>(
 
         updateAndScrollToFocusedIndex(newSelectedIndex);
     }, [canSelectMultiple, flattenedSections.allOptions.length, prevTextInputValue, textInputValue, updateAndScrollToFocusedIndex]);
+
+    useEffect(() => {
+        console.log({showLoadingPlaceholder});
+        if (showLoadingPlaceholder) {
+            return;
+        }
+
+        Performance.markEnd(CONST.TIMING.OPEN_SEARCH);
+        Timing.end(CONST.TIMING.OPEN_SEARCH);
+    }, [showLoadingPlaceholder]);
 
     /** Selects row when pressing Enter */
     useKeyboardShortcut(CONST.KEYBOARD_SHORTCUTS.ENTER, selectFocusedOption, {

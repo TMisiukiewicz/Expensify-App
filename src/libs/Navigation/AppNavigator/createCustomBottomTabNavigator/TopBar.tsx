@@ -5,9 +5,12 @@ import WorkspaceSwitcherButton from '@components/WorkspaceSwitcherButton';
 import useActiveWorkspace from '@hooks/useActiveWorkspace';
 import useLocalize from '@hooks/useLocalize';
 import useThemeStyles from '@hooks/useThemeStyles';
+import Timing from '@libs/actions/Timing';
 import Navigation from '@libs/Navigation/Navigation';
+import Performance from '@libs/Performance';
 import SignInOrAvatarWithOptionalStatus from '@pages/home/sidebar/SignInOrAvatarWithOptionalStatus';
 import * as Session from '@userActions/Session';
+import CONST from '@src/CONST';
 import ROUTES from '@src/ROUTES';
 
 function TopBar() {
@@ -23,7 +26,11 @@ function TopBar() {
             <WorkspaceSwitcherButton activeWorkspaceID={activeWorkspaceID} />
             <Search
                 placeholder={translate('sidebarScreen.buttonSearch')}
-                onPress={Session.checkIfActionIsAllowed(() => Navigation.navigate(ROUTES.SEARCH))}
+                onPress={Session.checkIfActionIsAllowed(() => {
+                    Performance.markStart(CONST.TIMING.OPEN_SEARCH);
+                    Timing.start(CONST.TIMING.OPEN_SEARCH);
+                    Navigation.navigate(ROUTES.SEARCH);
+                })}
                 containerStyle={[styles.flex1]}
             />
             <SignInOrAvatarWithOptionalStatus />
