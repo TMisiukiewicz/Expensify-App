@@ -665,7 +665,7 @@ function createOption(
         } else {
             result.alternateText = showChatPreviewLine && lastMessageText ? lastMessageText : LocalePhoneNumber.formatPhoneNumber(personalDetail?.login ?? '');
         }
-        reportName = '';
+        reportName = ReportUtils.getReportName(report);
     } else {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         reportName = ReportUtils.getDisplayNameForParticipant(accountIDs[0]) || LocalePhoneNumber.formatPhoneNumber(personalDetail?.login ?? '');
@@ -1974,6 +1974,23 @@ function formatSectionsFromSearchTerm(
     };
 }
 
+function createMatchSorter(data: readonly ReportUtils.OptionData[], keys: string[], searchValue = '') {
+    return matchSorter(data, searchValue, {
+        keys,
+        sorter: (matchItems) => {
+            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
+            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+
+            if (hasTightMatches) {
+                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
+            }
+
+            return [];
+        },
+        keepDiacritics: true,
+    });
+}
+
 function filterOptions(options: GetOptions, searchValue = '') {
     Performance.markStart('filter_options');
     Timing.start('filter_options');
@@ -1993,66 +2010,34 @@ function filterOptions(options: GetOptions, searchValue = '') {
             chatRooms: [],
             policyExpenseChats: [],
             reports: [],
+            personalDetails: options.personalDetails,
         },
     );
-    const personalDetails = matchSorter(options.personalDetails, searchValue, {
-        keys: ['text', 'login', 'participantsList[0].displayName', 'participantsList[0].firstName', 'participantsList[0].lastName'],
-        sorter: (matchItems) => {
-            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
-            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
 
-            if (hasTightMatches) {
-                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
-            }
+    const searchTerms = searchValue.split(' ');
 
-            return matchItems;
-        },
-        keepDiacritics: true,
-    });
+    const matchResults = searchTerms.reduceRight((items, term) => {
+        const personalDetails = createMatchSorter(
+            items.personalDetails,
+            ['text', 'login', 'participantsList[0].displayName', 'participantsList[0].firstName', 'participantsList[0].lastName'],
+            term,
+        );
+        const chatRooms = createMatchSorter(items.chatRooms, ['text', 'alternateText'], term);
+        const policyExpenseChats = createMatchSorter(items.policyExpenseChats, ['text'], term);
+        const reports = createMatchSorter(
+            items.reports,
+            ['text', 'participantsList.*.login', 'participantsList.*.displayName', 'participantsList.*.firstName', 'participantsList.*.lastName'],
+            term,
+        );
 
-    const chatRooms = matchSorter(reportsByType.chatRooms, searchValue, {
-        keys: ['text', 'alternateText'],
-        sorter: (matchItems) => {
-            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
-            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
-
-            if (hasTightMatches) {
-                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
-            }
-
-            return matchItems;
-        },
-        keepDiacritics: true,
-    });
-
-    const policyExpenseChats = matchSorter(reportsByType.policyExpenseChats, searchValue, {
-        keys: ['text'],
-        sorter: (matchItems) => {
-            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
-            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
-
-            if (hasTightMatches) {
-                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
-            }
-
-            return matchItems;
-        },
-        keepDiacritics: true,
-    });
-    const reports = matchSorter(reportsByType.reports, searchValue, {
-        keys: ['participantsList.*.login', 'participantsList.*.displayName', 'participantsList.*.firstName', 'participantsList.*.lastName', 'text'],
-        sorter: (matchItems) => {
-            // based on a match-sorter closeness ranking, a number close to rankings.MATCHES represents a loose match. A number close to rankings.MATCHES + 1 represents a tighter match.
-            const hasTightMatches = matchItems.some((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
-
-            if (hasTightMatches) {
-                return matchItems.filter((item) => item.rank >= matchSorter.rankings.MATCHES + 1);
-            }
-
-            return matchItems;
-        },
-        keepDiacritics: true,
-    });
+        return {
+            personalDetails,
+            chatRooms,
+            policyExpenseChats,
+            reports,
+        };
+    }, reportsByType);
+    const {personalDetails, chatRooms, policyExpenseChats, reports} = matchResults;
 
     let recentReportOptions = [...reports, ...personalDetails, ...chatRooms, ...policyExpenseChats];
     recentReportOptions = lodashOrderBy(
