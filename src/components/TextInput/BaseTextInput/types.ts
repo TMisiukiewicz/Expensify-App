@@ -1,8 +1,7 @@
-import type {Component, ForwardedRef} from 'react';
 import type {GestureResponderEvent, StyleProp, TextInputProps, TextStyle, ViewStyle} from 'react-native';
-import type {AnimatedProps} from 'react-native-reanimated';
+import type {AnimatedTextInputRef} from '@components/RNTextInput';
 import type {MaybePhraseKey} from '@libs/Localize';
-import IconAsset from '@src/types/utils/IconAsset';
+import type IconAsset from '@src/types/utils/IconAsset';
 
 type CustomBaseTextInputProps = {
     /** Input label */
@@ -24,10 +23,16 @@ type CustomBaseTextInputProps = {
     errorText?: MaybePhraseKey;
 
     /** Icon to display in right side of text input */
-    icon: IconAsset | null;
+    icon?: IconAsset | null;
+
+    /** Icon to display in left side of text input */
+    iconLeft?: IconAsset | null;
 
     /** Customize the TextInput container */
     textInputContainerStyles?: StyleProp<ViewStyle>;
+
+    /** Customizes the touchable wrapper of the TextInput component */
+    touchableInputWrapperStyle?: StyleProp<ViewStyle>;
 
     /** Customize the main container */
     containerStyles?: StyleProp<ViewStyle>;
@@ -62,7 +67,7 @@ type CustomBaseTextInputProps = {
     hideFocusedState?: boolean;
 
     /** Hint text to display below the TextInput */
-    hint?: string;
+    hint?: MaybePhraseKey;
 
     /** Prefix character */
     prefixCharacter?: string;
@@ -82,9 +87,6 @@ type CustomBaseTextInputProps = {
 
     /** Whether we should wait before focusing the TextInput, useful when using transitions  */
     shouldDelayFocus?: boolean;
-
-    /** Indicate whether pressing Enter on multiline input is allowed to submit the form. */
-    submitOnEnter?: boolean;
 
     /** Indicate whether input is multiline */
     multiline?: boolean;
@@ -108,8 +110,8 @@ type CustomBaseTextInputProps = {
     autoCompleteType?: string;
 };
 
-type BaseTextInputRef = ForwardedRef<HTMLFormElement | Component<AnimatedProps<TextInputProps>>>;
+type BaseTextInputRef = HTMLFormElement | AnimatedTextInputRef;
 
 type BaseTextInputProps = CustomBaseTextInputProps & TextInputProps;
 
-export type {CustomBaseTextInputProps, BaseTextInputRef, BaseTextInputProps};
+export type {BaseTextInputProps, BaseTextInputRef, CustomBaseTextInputProps};

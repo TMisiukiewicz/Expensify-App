@@ -11,6 +11,7 @@ import useLocalize from '@hooks/useLocalize';
 import useThemeStyles from '@hooks/useThemeStyles';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
+import INPUT_IDS from '@src/types/form/MoneyRequestMerchantForm';
 
 const propTypes = {
     /** Transaction default merchant value */
@@ -20,14 +21,18 @@ const propTypes = {
     onSubmit: PropTypes.func.isRequired,
 
     /** Boolean to enable validation */
-    isPolicyExpenseChat: PropTypes.bool.isRequired,
+    isPolicyExpenseChat: PropTypes.bool,
+};
+
+const defaultProps = {
+    isPolicyExpenseChat: false,
 };
 
 function EditRequestMerchantPage({defaultMerchant, onSubmit, isPolicyExpenseChat}) {
     const styles = useThemeStyles();
     const {translate} = useLocalize();
     const merchantInputRef = useRef(null);
-    const isEmptyMerchant = defaultMerchant === '' || defaultMerchant === CONST.TRANSACTION.UNKNOWN_MERCHANT || defaultMerchant === CONST.TRANSACTION.PARTIAL_TRANSACTION_MERCHANT;
+    const isEmptyMerchant = defaultMerchant === '' || defaultMerchant === CONST.TRANSACTION.PARTIAL_TRANSACTION_MERCHANT;
 
     const validate = useCallback(
         (value) => {
@@ -59,8 +64,8 @@ function EditRequestMerchantPage({defaultMerchant, onSubmit, isPolicyExpenseChat
                 <View style={styles.mb4}>
                     <InputWrapper
                         InputComponent={TextInput}
-                        inputID="merchant"
-                        name="merchant"
+                        inputID={INPUT_IDS.MERCHANT}
+                        name={INPUT_IDS.MERCHANT}
                         defaultValue={isEmptyMerchant ? '' : defaultMerchant}
                         label={translate('common.merchant')}
                         accessibilityLabel={translate('common.merchant')}
@@ -74,6 +79,7 @@ function EditRequestMerchantPage({defaultMerchant, onSubmit, isPolicyExpenseChat
 }
 
 EditRequestMerchantPage.propTypes = propTypes;
+EditRequestMerchantPage.defaultProps = defaultProps;
 EditRequestMerchantPage.displayName = 'EditRequestMerchantPage';
 
 export default EditRequestMerchantPage;

@@ -1,4 +1,5 @@
-import React, {ForwardedRef, forwardRef, useContext, useEffect, useMemo} from 'react';
+import type {ForwardedRef} from 'react';
+import React, {forwardRef, useContext, useEffect, useMemo} from 'react';
 import {View} from 'react-native';
 import ColorSchemeWrapper from '@components/ColorSchemeWrapper';
 import {PopoverContext} from '@components/PopoverProvider';
@@ -6,8 +7,10 @@ import useSafeAreaInsets from '@hooks/useSafeAreaInsets';
 import useStyleUtils from '@hooks/useStyleUtils';
 import useThemeStyles from '@hooks/useThemeStyles';
 import useWindowDimensions from '@hooks/useWindowDimensions';
+import variables from '@styles/variables';
 import * as Modal from '@userActions/Modal';
-import PopoverWithoutOverlayProps from './types';
+import viewRef from '@src/types/utils/viewRef';
+import type PopoverWithoutOverlayProps from './types';
 
 function PopoverWithoutOverlay(
     {
@@ -51,13 +54,13 @@ function PopoverWithoutOverlay(
                 close: onClose,
                 anchorRef,
             });
-            removeOnClose = Modal.setCloseModal(() => onClose(anchorRef));
+            removeOnClose = Modal.setCloseModal(onClose);
         } else {
             onModalHide();
             close(anchorRef);
             Modal.onModalDidClose();
         }
-        Modal.willAlertModalBecomeVisible(isVisible);
+        Modal.willAlertModalBecomeVisible(isVisible, true);
 
         return () => {
             if (!removeOnClose) {
@@ -117,8 +120,10 @@ function PopoverWithoutOverlay(
 
     return (
         <View
-            style={[modalStyle, {zIndex: 1}]}
-            ref={withoutOverlayRef}
+            style={[modalStyle, {zIndex: variables.popoverzIndex}]}
+            ref={viewRef(withoutOverlayRef)}
+            // Prevent the parent element to capture a click. This is useful when the modal component is put inside a pressable.
+            onClick={(e) => e.stopPropagation()}
         >
             <View
                 style={{
