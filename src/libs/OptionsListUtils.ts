@@ -1165,24 +1165,34 @@ function getTagListSections(tags: Tag[], recentlyUsedTags: string[], selectedOpt
 
 function getNewOptions(reports, personalDetails, {betas = [], reportActions = {}, showChatPreviewLine = true, searchValue = ''}) {
     const reportMapForAccountIDs = {};
-
     // Filter out all the reports that shouldn't be displayed
-    const filteredReports = _.filter(reports, (report) => ReportUtils.shouldReportBeInOptionList(report, Navigation.getTopmostReportId(), false, betas, policies));
+    const filteredReports = Object.fromEntries(
+        Object.entries(reports).filter(([, report]) =>
+            ReportUtils.shouldReportBeInOptionList({
+                report,
+                currentReportId: Navigation.getTopmostReportId() ?? '',
+                betas,
+                policies,
+                doesReportHaveViolations: false,
+                isInGSDMode: false,
 
+                excludeEmptyChats: false,
+            }),
+        ),
+    );
     // Sorting the reports works like this:
     // - Order everything by the last message timestamp (descending)
     // - All archived reports should remain at the bottom
-    const orderedReports = _.sortBy(filteredReports, (report) => {
+    const orderedReports = lodashSortBy(filteredReports, (report) => {
         if (ReportUtils.isArchivedRoom(report)) {
             return CONST.DATE.UNIX_EPOCH;
         }
 
-        return report.lastVisibleActionCreated;
+        return report?.lastVisibleActionCreated;
     });
     orderedReports.reverse();
-
     const allReportOptions = [];
-    _.each(orderedReports, (report) => {
+    orderedReports.forEach((report) => {
         if (!report) {
             return;
         }
@@ -1215,8 +1225,8 @@ function getNewOptions(reports, personalDetails, {betas = [], reportActions = {}
     // This is a temporary fix for all the logic that's been breaking because of the new privacy changes
     // See https://github.com/Expensify/Expensify/issues/293465 for more context
     // Moreover, we should not override the personalDetails object, otherwise the createOption util won't work properly, it returns incorrect tooltipText
-    const havingLoginPersonalDetails = _.pick(personalDetails, (detail) => Boolean(detail.login) && !detail.isOptimisticPersonalDetail);
-    let allPersonalDetailsOptions = _.map(havingLoginPersonalDetails, (personalDetail) =>
+    const havingLoginPersonalDetails = Object.entries(personalDetails).filter(([, detail]) => Boolean(detail.login) && !detail.isOptimisticPersonalDetail);
+    let allPersonalDetailsOptions = havingLoginPersonalDetails.map((personalDetail) =>
         createOption([personalDetail.accountID], personalDetails, reportMapForAccountIDs[personalDetail.accountID], reportActions, {
             showChatPreviewLine,
             forcePolicyNamePreview: true,
@@ -1224,10 +1234,11 @@ function getNewOptions(reports, personalDetails, {betas = [], reportActions = {}
     );
     // PersonalDetails should be ordered Alphabetically by default - https://github.com/Expensify/App/issues/8220#issuecomment-1104009435
     allPersonalDetailsOptions = lodashOrderBy(allPersonalDetailsOptions, [(personalDetail) => personalDetail.text && personalDetail.text.toLowerCase()], 'asc');
-
+    console.log({allReportOptions});
     return {
         reportsOptions: allReportOptions,
         personalDetailsOptions: allPersonalDetailsOptions,
+        userToInvite: {},
     };
 }
 

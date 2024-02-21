@@ -69,4 +69,6 @@ export {
     withPreferredEmojiSkinTone,
     PreferredEmojiSkinToneContext,
     useSession,
+    withReports,
+    useReports,
 };

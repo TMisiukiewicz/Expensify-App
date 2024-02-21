@@ -23,7 +23,6 @@ function OptionsListContextProvider({children}) {
             //     userToInvite: localUserToInvite,
             // } = OptionsListUtils.getSearchOptions(reports, personalDetails, searchTerm.trim(), betas);
             const newOptions = OptionsListUtils.getNewOptions(reports, personalDetails, {betas, searchValue});
-            // console.log({newOptions});
             setOptions({
                 reports: newOptions.reportsOptions,
                 personalDetails: newOptions.personalDetailsOptions,

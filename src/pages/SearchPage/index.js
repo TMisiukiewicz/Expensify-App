@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo} from 'react';
 import {View} from 'react-native';
 import {withOnyx} from 'react-native-onyx';
 import HeaderWithBackButton from '@components/HeaderWithBackButton';
@@ -14,29 +14,21 @@ import Navigation from '@libs/Navigation/Navigation';
 import * as OptionsListUtils from '@libs/OptionsListUtils';
 import Performance from '@libs/Performance';
 import * as ReportUtils from '@libs/ReportUtils';
-import reportPropTypes from '@pages/reportPropTypes';
 import * as Report from '@userActions/Report';
 import Timing from '@userActions/Timing';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
+import { useOptionsListContext } from '@components/OptionsListContext';
 import SearchPageFooter from './SearchPageFooter';
 
 const propTypes = {
     /* Onyx Props */
-
-    /** Beta features list */
-    betas: PropTypes.arrayOf(PropTypes.string),
-
-    /** All reports shared with the user */
-    reports: PropTypes.objectOf(reportPropTypes),
 
     /** Whether or not we are searching for reports on the server */
     isSearchingForReports: PropTypes.bool,
 };
 
 const defaultProps = {
-    betas: [],
-    reports: {},
     isSearchingForReports: false,
 };
 
@@ -47,12 +39,12 @@ const setPerformanceTimersEnd = () => {
 
 const SearchPageFooterInstance = <SearchPageFooter />;
 
-function SearchPage({betas, reports, isSearchingForReports}) {
-    const [isScreenTransitionEnd, setIsScreenTransitionEnd] = useState(false);
+function SearchPage({isSearchingForReports}) {
     const {translate} = useLocalize();
     const {isOffline} = useNetwork();
     const themeStyles = useThemeStyles();
     const personalDetails = usePersonalDetails();
+    const {options} = useOptionsListContext();
 
     const offlineMessage = isOffline ? [`${translate('common.youAppearToBeOffline')} ${translate('search.resultsAreLimited')}`, {isTranslated: true}] : '';
 
@@ -66,30 +58,16 @@ function SearchPage({betas, reports, isSearchingForReports}) {
     useEffect(() => {
         Report.searchInServer(debouncedSearchValue.trim());
     }, [debouncedSearchValue]);
-
     const {
-        recentReports,
+        reports: recentReports,
         personalDetails: localPersonalDetails,
-        userToInvite,
-        headerMessage,
-    } = useMemo(() => {
-        if (!isScreenTransitionEnd) {
-            return {
-                recentReports: {},
-                personalDetails: {},
-                userToInvite: {},
-                headerMessage: '',
-            };
-        }
-        const options = OptionsListUtils.getSearchOptions(reports, personalDetails, debouncedSearchValue.trim(), betas);
-        const header = OptionsListUtils.getHeaderMessage(options.recentReports.length + options.personalDetails.length !== 0, Boolean(options.userToInvite), debouncedSearchValue);
-        return {...options, headerMessage: header};
-    }, [debouncedSearchValue, reports, personalDetails, betas, isScreenTransitionEnd]);
+    } = options;
+    const userToInvite = {};
+    const headerMessage = 'AA';
 
     const sections = useMemo(() => {
         const newSections = [];
         let indexOffset = 0;
-
         if (recentReports.length > 0) {
             newSections.push({
                 data: recentReports,
@@ -132,17 +110,12 @@ function SearchPage({betas, reports, isSearchingForReports}) {
         }
     };
 
-    const handleScreenTransitionEnd = () => {
-        setIsScreenTransitionEnd(true);
-    };
-
     const isOptionsDataReady = useMemo(() => ReportUtils.isReportDataReady() && OptionsListUtils.isPersonalDetailsReady(personalDetails), [personalDetails]);
 
     return (
         <ScreenWrapper
             includeSafeAreaPaddingBottom={false}
             testID={SearchPage.displayName}
-            onEntryTransitionEnd={handleScreenTransitionEnd}
         >
             {({didScreenTransitionEnd, safeAreaPaddingBottomStyle}) => (
                 <>
@@ -161,7 +134,7 @@ function SearchPage({betas, reports, isSearchingForReports}) {
                             onLayout={setPerformanceTimersEnd}
                             autoFocus
                             onSelectRow={selectReport}
-                            showLoadingPlaceholder={!didScreenTransitionEnd || !isOptionsDataReady}
+                            showLoadingPlaceholder={!isOptionsDataReady}
                             footerContent={SearchPageFooterInstance}
                             isLoadingNewOptions={isSearchingForReports}
                         />
@@ -177,12 +150,6 @@ SearchPage.defaultProps = defaultProps;
 SearchPage.displayName = 'SearchPage';
 
 export default withOnyx({
-    reports: {
-        key: ONYXKEYS.COLLECTION.REPORT,
-    },
-    betas: {
-        key: ONYXKEYS.BETAS,
-    },
     isSearchingForReports: {
         key: ONYXKEYS.IS_SEARCHING_FOR_REPORTS,
         initWithStoredValues: false,
