@@ -1242,6 +1242,21 @@ function getNewOptions(reports, personalDetails, {betas = [], reportActions = {}
     };
 }
 
+function createOptionFromReport(report: Report, personalDetails: OnyxEntry<PersonalDetailsList>) {
+    const accountIDs = report.participantAccountIDs || [];
+
+    return createOption(
+        accountIDs,
+        personalDetails,
+        report,
+        {},
+        {
+            showChatPreviewLine: true,
+            forcePolicyNamePreview: true,
+        },
+    );
+}
+
 function getNewSearchOptions(
     allReportOptions,
     allPersonalDetailsOptions,
@@ -2325,6 +2340,7 @@ export {
     getNewSearchOptions,
     transformedTaxRates,
     getShareLogOptions,
+    createOptionFromReport,
 };
 
 export type {MemberForList, CategorySection, GetOptions};

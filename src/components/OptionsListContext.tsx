@@ -1,5 +1,6 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useState} from 'react';
 import * as OptionsListUtils from '@libs/OptionsListUtils';
+import * as ReportUtils from '@libs/ReportUtils';
 import {useBetas, usePersonalDetails, useReports} from './OnyxProvider';
 
 const OptionsListContext = createContext({
@@ -17,6 +18,9 @@ function OptionsListContextProvider({children}) {
 
     const loadOptions = useCallback(
         (searchValue = '') => {
+            // const time = performance.now();
+            // const iseq = deepEqual(reports, previousReports);
+            // console.log('deepEqual(reports, previousReports)', performance.now() - time, 'isEqual:', iseq);
             // const {
             //     recentReports: localRecentReports,
             //     personalDetails: localPersonalDetails,
@@ -34,6 +38,22 @@ function OptionsListContextProvider({children}) {
     useEffect(() => {
         loadOptions();
     }, []);
+
+    useEffect(() => {
+        const lastUpdatedReport = ReportUtils.getLastUpdatedReport();
+        const newOption = OptionsListUtils.createOptionFromReport(lastUpdatedReport, personalDetails);
+        const replaceIndex = options.reports.findIndex((option) => option.reportID === lastUpdatedReport.reportID);
+
+        if (replaceIndex === undefined) {
+            return;
+        }
+
+        setOptions((prevOptions) => {
+            const newOptions = {...prevOptions};
+            newOptions.reports[replaceIndex] = newOption;
+            return newOptions;
+        });
+    }, [reports]);
 
     return <OptionsListContext.Provider value={useMemo(() => ({options, loadOptions}), [options, loadOptions])}>{children}</OptionsListContext.Provider>;
 }

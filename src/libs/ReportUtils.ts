@@ -451,6 +451,18 @@ Onyx.connect({
     },
 });
 
+let lastUpdatedReport: Report;
+Onyx.connect({
+    key: ONYXKEYS.COLLECTION.REPORT,
+    callback: (value) => {
+        lastUpdatedReport = value;
+    },
+});
+
+function getLastUpdatedReport() {
+    return lastUpdatedReport;
+}
+
 let allReports: OnyxCollection<Report>;
 Onyx.connect({
     key: ONYXKEYS.COLLECTION.REPORT,
@@ -5217,6 +5229,7 @@ export {
     getAllAncestorReportActionIDs,
     canEditPolicyDescription,
     getPolicyDescriptionText,
+    getLastUpdatedReport,
 };
 
 export type {
