@@ -1164,6 +1164,8 @@ function getTagListSections(tags: Tag[], recentlyUsedTags: string[], selectedOpt
 }
 
 function getNewOptions(reports, personalDetails, {betas = [], reportActions = {}, showChatPreviewLine = true, searchValue = ''}) {
+    Timing.start(CONST.TIMING.LOAD_SEARCH_OPTIONS);
+    Performance.markStart(CONST.TIMING.LOAD_SEARCH_OPTIONS);
     const reportMapForAccountIDs = {};
     // Filter out all the reports that shouldn't be displayed
     const filteredReports = Object.fromEntries(
@@ -1234,7 +1236,8 @@ function getNewOptions(reports, personalDetails, {betas = [], reportActions = {}
     );
     // PersonalDetails should be ordered Alphabetically by default - https://github.com/Expensify/App/issues/8220#issuecomment-1104009435
     allPersonalDetailsOptions = lodashOrderBy(allPersonalDetailsOptions, [(personalDetail) => personalDetail.text && personalDetail.text.toLowerCase()], 'asc');
-    console.log({allReportOptions});
+    Timing.end(CONST.TIMING.LOAD_SEARCH_OPTIONS);
+    Performance.markEnd(CONST.TIMING.LOAD_SEARCH_OPTIONS);
     return {
         reportsOptions: allReportOptions,
         personalDetailsOptions: allPersonalDetailsOptions,

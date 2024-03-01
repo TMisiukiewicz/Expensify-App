@@ -1,5 +1,7 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useState} from 'react';
+import Timing from '@libs/actions/Timing';
 import * as OptionsListUtils from '@libs/OptionsListUtils';
+import Performance from '@libs/Performance';
 import * as ReportUtils from '@libs/ReportUtils';
 import {useBetas, usePersonalDetails, useReports} from './OnyxProvider';
 
@@ -40,6 +42,8 @@ function OptionsListContextProvider({children}) {
     }, []);
 
     useEffect(() => {
+        Timing.start('update_options');
+        Performance.markStart('update_options');
         const lastUpdatedReport = ReportUtils.getLastUpdatedReport();
         const newOption = OptionsListUtils.createOptionFromReport(lastUpdatedReport, personalDetails);
         const replaceIndex = options.reports.findIndex((option) => option.reportID === lastUpdatedReport.reportID);
@@ -53,6 +57,8 @@ function OptionsListContextProvider({children}) {
             newOptions.reports[replaceIndex] = newOption;
             return newOptions;
         });
+        Timing.end('update_options');
+        Performance.markEnd('update_options');
     }, [reports]);
 
     return <OptionsListContext.Provider value={useMemo(() => ({options, loadOptions}), [options, loadOptions])}>{children}</OptionsListContext.Provider>;

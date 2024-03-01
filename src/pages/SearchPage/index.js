@@ -110,7 +110,8 @@ function SearchPage({isSearchingForReports}) {
         }
     };
 
-    const isOptionsDataReady = useMemo(() => ReportUtils.isReportDataReady() && OptionsListUtils.isPersonalDetailsReady(personalDetails), [personalDetails]);
+    // const isOptionsDataReady = useMemo(() => ReportUtils.isReportDataReady() && OptionsListUtils.isPersonalDetailsReady(personalDetails), [personalDetails]);
+    const isOptionsDataReady = true;
 
     return (
         <ScreenWrapper
@@ -125,7 +126,7 @@ function SearchPage({isSearchingForReports}) {
                     />
                     <View style={[themeStyles.flex1, themeStyles.w100, safeAreaPaddingBottomStyle]}>
                         <SelectionList
-                            sections={didScreenTransitionEnd && isOptionsDataReady ? sections : CONST.EMPTY_ARRAY}
+                            sections={isOptionsDataReady ? sections : CONST.EMPTY_ARRAY}
                             textInputValue={searchValue}
                             textInputLabel={translate('optionsSelector.nameEmailOrPhoneNumber')}
                             textInputHint={offlineMessage}
