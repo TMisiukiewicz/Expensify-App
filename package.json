@@ -36,7 +36,7 @@
     "android-build-e2edelta": "bundle exec fastlane android build_e2edelta",
     "test": "TZ=utc NODE_OPTIONS=--experimental-vm-modules jest",
     "typecheck": "tsc",
-    "lint": "./node_modules/@biomejs/biome/bin/biome lint .",
+    "lint": "./node_modules/@biomejs/biome/bin/biome lint . --log-kind=compact",
     "lint-changed": "eslint --fix $(git diff --diff-filter=AM --name-only main -- \"*.js\" \"*.ts\" \"*.tsx\")",
     "lint-watch": "npx eslint-watch --watch --changed",
     "shellcheck": "./scripts/shellCheck.sh",
