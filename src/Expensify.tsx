@@ -175,6 +175,8 @@ function Expensify({
             });
         }, 30 * 1000);
 
+        // test
+
         // This timer is set in the native layer when launching the app and we stop it here so we can measure how long
         // it took for the main app itself to load.
         StartupTimer.stop();
