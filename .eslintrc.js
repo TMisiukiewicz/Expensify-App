@@ -98,6 +98,7 @@ module.exports = {
         'plugin:@typescript-eslint/stylistic-type-checked',
         'plugin:you-dont-need-lodash-underscore/all',
         'prettier',
+        "plugin:diff/ci"
     ],
     plugins: ['@typescript-eslint', 'jsdoc', 'you-dont-need-lodash-underscore', 'react-native-a11y', 'react', 'testing-library', 'eslint-plugin-react-compiler'],
     ignorePatterns: ['lib/**'],

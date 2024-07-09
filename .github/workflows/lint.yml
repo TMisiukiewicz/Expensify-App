@@ -26,6 +26,7 @@ jobs:
       - name: Lint JavaScript and Typescript with ESLint
         run: npm run lint
         env:
+          ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
           CI: true
 
       - name: Verify there's no Prettier diff
