@@ -24,7 +24,7 @@ jobs:
         uses: ./.github/actions/composite/setupNode
 
       - name: Lint JavaScript and Typescript with ESLint
-        run: npm run lint
+        run: npx --no-install eslint --ext .js,.jsx,.ts,.tsx .
         env:
           ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
           CI: true
