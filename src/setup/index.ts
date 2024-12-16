@@ -42,6 +42,22 @@ export default function () {
             // Always open the home route on app startup for native platforms by clearing the lastVisitedPath
             [ONYXKEYS.LAST_VISITED_PATH]: initializeLastVisitedPath(),
         },
+        schema: {
+            [ONYXKEYS.IS_LOADING_APP]: {
+                type: 'boolean',
+            },
+            [ONYXKEYS.COLLECTION.REPORT]: {
+                type: 'object',
+                pattern: /^report_\d+$/,
+                properties: {
+                    isPinned: {type: 'boolean'},
+                    lastActionType: {type: 'string'},
+                },
+            },
+        },
+        onError: (key, value, error) => {
+            console.log({key, value, error});
+        },
     });
 
     Device.setDeviceID();
