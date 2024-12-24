@@ -53,14 +53,41 @@ export default function () {
                     avatarUrl: {type: 'string'},
                     chatType: {type: 'string'},
                     description: {type: 'string'},
-                    errorFields: {type: 'object'},
-                    fieldList: {type: 'object'},
+                    errorFields: {
+                        type: 'object',
+                        properties: {
+                            '*': {
+                                type: 'string',
+                            },
+                        },
+                    },
+                    fieldList: {
+                        type: 'object',
+                        properties: {
+                            '*': {
+                                type: 'string',
+                                // TODO add properties
+                            },
+                        },
+                    },
                     iouReportID: {type: 'string'},
                     isCancelledIOU: {type: 'boolean'},
                     isDeletedParentAction: {type: 'boolean'},
                     isWaitingOnBankAccount: {type: 'boolean'},
-                    invoiceReceiver: {type: 'object'},
+                    invoiceReceiver: {
+                        type: 'object',
+                        properties: {
+                            type: {
+                                type: 'string',
+                            },
+                            accountID: {
+                                type: 'number',
+                            },
+                        },
+                    },
                     lastActionType: {type: 'string'},
+                    lastMessageTranslationKey: {type: 'string'},
+                    state: {type: 'string'},
                     lastActorAccountID: {type: 'string'},
                     lastMessageHtml: {type: 'string'},
                     lastVisibleActionLastModified: {type: 'string'},
