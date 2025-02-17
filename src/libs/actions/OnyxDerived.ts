@@ -2,10 +2,12 @@ import type {OnyxEntry} from 'react-native-onyx';
 import Onyx from 'react-native-onyx';
 import OnyxUtils from 'react-native-onyx/dist/OnyxUtils';
 import type {NonEmptyTuple, ValueOf} from 'type-fest';
-import {isThread} from '@libs/ReportUtils';
+import {getReportAction} from '@libs/ReportActionsUtils';
+import {getReasonAndReportActionThatRequiresAttention, hasAnyViolationsToDisplayRBR, isThread} from '@libs/ReportUtils';
 import CONST from '@src/CONST';
 import type {GetOnyxTypeForKey, OnyxDerivedKey, OnyxDerivedValuesMapping, OnyxKey} from '@src/ONYXKEYS';
 import ONYXKEYS from '@src/ONYXKEYS';
+import type * as OnyxTypes from '@src/types/onyx';
 import type AssertTypesEqual from '@src/types/utils/AssertTypesEqual';
 import ObjectUtils from '@src/types/utils/ObjectUtils';
 import type SymmetricDifference from '@src/types/utils/SymmetricDifference';
@@ -72,6 +74,32 @@ const ONYX_DERIVED_VALUES = {
             });
 
             return conciergeReport?.reportID;
+        },
+    }),
+    [ONYXKEYS.DERIVED.REPORTS]: createOnyxDerivedValueConfig({
+        key: ONYXKEYS.DERIVED.REPORTS,
+        dependencies: [ONYXKEYS.COLLECTION.REPORT, ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS],
+        compute: ([reports, transactionViolations]) => {
+            if (!reports || !transactionViolations) {
+                return {};
+            }
+
+            return Object.values(reports).reduce<OnyxTypes.OnyxDerivedReportsList>((acc, report) => {
+                if (!report) {
+                    return acc;
+                }
+
+                const hasAnyViolations = hasAnyViolationsToDisplayRBR(report, transactionViolations);
+                const parentReportAction = getReportAction(report.parentReportID, report.parentReportActionID);
+                const reasonAndReportActionThatRequiresAttention = getReasonAndReportActionThatRequiresAttention(report, parentReportAction);
+
+                acc[report.reportID] = {
+                    hasAnyViolations,
+                    requiresAttentionFromCurrentUser: !!reasonAndReportActionThatRequiresAttention,
+                };
+
+                return acc;
+            }, {});
         },
     }),
 } as const;

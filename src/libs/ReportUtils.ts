@@ -26,6 +26,7 @@ import ROUTES from '@src/ROUTES';
 import SCREENS from '@src/SCREENS';
 import type {
     Beta,
+    OnyxDerivedReportsList,
     OnyxInputOrEntry,
     PersonalDetails,
     PersonalDetailsList,
@@ -932,6 +933,17 @@ let activePolicyID: OnyxEntry<string>;
 Onyx.connect({
     key: ONYXKEYS.NVP_ACTIVE_POLICY_ID,
     callback: (value) => (activePolicyID = value),
+});
+
+let derivedReports: OnyxDerivedReportsList;
+Onyx.connect({
+    key: ONYXKEYS.DERIVED.REPORTS,
+    callback: (value) => {
+        if (!value) {
+            return;
+        }
+        derivedReports = value;
+    },
 });
 
 function getCurrentUserAvatar(): AvatarSource | undefined {
@@ -6927,9 +6939,9 @@ function shouldHideReport(report: OnyxEntry<Report>, currentReportId: string | u
 }
 
 /**
- * Should we display a RBR on the LHN on this report due to violations?
+ * Checks if the report has any violations that should display a RBR
  */
-function shouldDisplayViolationsRBRInLHN(report: OnyxEntry<Report>, transactionViolations: OnyxCollection<TransactionViolation[]>): boolean {
+function hasAnyViolationsToDisplayRBR(report: OnyxEntry<Report>, transactionViolations: OnyxCollection<TransactionViolation[]>): boolean {
     // We only show the RBR in the highest level, which is the workspace chat
     if (!report || !isPolicyExpenseChat(report)) {
         return false;
@@ -6939,6 +6951,7 @@ function shouldDisplayViolationsRBRInLHN(report: OnyxEntry<Report>, transactionV
     if (!isCurrentUserSubmitter(report.reportID)) {
         return false;
     }
+
     if (!report.policyID || !reportsByPolicyID) {
         return false;
     }
@@ -6948,6 +6961,16 @@ function shouldDisplayViolationsRBRInLHN(report: OnyxEntry<Report>, transactionV
     return potentialReports.some((potentialReport) => {
         return hasViolations(potentialReport.reportID, transactionViolations) || hasWarningTypeViolations(potentialReport.reportID, transactionViolations);
     });
+}
+
+/**
+ * Should we display a RBR on the LHN on this report due to violations?
+ */
+function shouldDisplayViolationsRBRInLHN(report: OnyxEntry<Report>): boolean {
+    if (!report || !derivedReports) {
+        return false;
+    }
+    return derivedReports[report.reportID]?.hasAnyViolations ?? false;
 }
 
 /**
@@ -7075,7 +7098,7 @@ function getAllReportErrors(report: OnyxEntry<Report>, reportActions: OnyxEntry<
     return allReportErrors;
 }
 
-function hasReportErrorsOtherThanFailedReceipt(report: Report, doesReportHaveViolations: boolean, transactionViolations: OnyxCollection<TransactionViolation[]>) {
+function hasReportErrorsOtherThanFailedReceipt(report: Report, doesReportHaveViolations: boolean) {
     const reportActions = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.reportID}`] ?? {};
     const allReportErrors = getAllReportErrors(report, reportActions) ?? {};
     const transactionReportActions = getAllReportActions(report.reportID);
@@ -7083,7 +7106,7 @@ function hasReportErrorsOtherThanFailedReceipt(report: Report, doesReportHaveVio
     let doesTransactionThreadReportHasViolations = false;
     if (oneTransactionThreadReportID) {
         const transactionReport = getReport(oneTransactionThreadReportID, allReports);
-        doesTransactionThreadReportHasViolations = !!transactionReport && shouldDisplayViolationsRBRInLHN(transactionReport, transactionViolations);
+        doesTransactionThreadReportHasViolations = !!transactionReport && shouldDisplayViolationsRBRInLHN(transactionReport);
     }
     return (
         doesTransactionThreadReportHasViolations ||
@@ -9492,6 +9515,7 @@ export {
     buildOptimisticSelfDMReport,
     isHiddenForCurrentUser,
     prepareOnboardingOnyxData,
+    hasAnyViolationsToDisplayRBR,
 };
 
 export type {

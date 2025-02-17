@@ -1284,7 +1284,6 @@ function getValidReports(reports: OptionList['reports'], config: GetValidReports
         includeTasks = false,
         includeMoneyRequests = false,
         includeReadOnly = true,
-        transactionViolations = {},
         includeSelfDM = false,
         includeInvoiceRooms = false,
         action,
@@ -1307,7 +1306,7 @@ function getValidReports(reports: OptionList['reports'], config: GetValidReports
         // eslint-disable-next-line rulesdir/prefer-at
         const option = reports[i];
         const report = option.item;
-        const doesReportHaveViolations = shouldDisplayViolationsRBRInLHN(report, transactionViolations);
+        const doesReportHaveViolations = shouldDisplayViolationsRBRInLHN(report);
 
         const shouldBeInOptionList = shouldReportBeInOptionList({
             report,
