@@ -1,11 +1,10 @@
 import {rand} from '@ngneat/falso';
-import type {OnyxCollection} from 'react-native-onyx';
 import Onyx from 'react-native-onyx';
 import {measureFunction} from 'reassure';
 import SidebarUtils from '@libs/SidebarUtils';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
-import type {PersonalDetails, TransactionViolation} from '@src/types/onyx';
+import type {PersonalDetails} from '@src/types/onyx';
 import type Policy from '@src/types/onyx/Policy';
 import type Report from '@src/types/onyx/Report';
 import type ReportAction from '@src/types/onyx/ReportAction';
@@ -53,7 +52,6 @@ const policies = createCollection<Policy>(
 const mockedBetas = Object.values(CONST.BETAS);
 
 const currentReportId = '1';
-const transactionViolations = {} as OnyxCollection<TransactionViolation[]>;
 
 describe('SidebarUtils', () => {
     beforeAll(() => {
