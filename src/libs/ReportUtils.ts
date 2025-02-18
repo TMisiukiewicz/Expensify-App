@@ -3042,7 +3042,8 @@ function buildOptimisticCancelPaymentReportAction(expenseReportID: string, amoun
  */
 function getLastVisibleMessage(reportID: string | undefined, actionsToMerge: ReportActions = {}): LastVisibleMessage {
     const report = getReportOrDraftReport(reportID);
-    const lastVisibleAction = getLastVisibleActionReportActionsUtils(reportID, canUserPerformWriteAction(report), actionsToMerge);
+    const canUserWrite = canUserPerformWriteAction(report);
+    const lastVisibleAction = getLastVisibleActionReportActionsUtils(reportID, canUserWrite, actionsToMerge);
 
     // For Chat Report with deleted parent actions, let us fetch the correct message
     if (isDeletedParentAction(lastVisibleAction) && !isEmptyObject(report) && isChatReport(report)) {
@@ -3053,7 +3054,7 @@ function getLastVisibleMessage(reportID: string | undefined, actionsToMerge: Rep
     }
 
     // Fetch the last visible message for report represented by reportID and based on actions to merge.
-    return getLastVisibleMessageReportActionsUtils(reportID, canUserPerformWriteAction(report), actionsToMerge);
+    return getLastVisibleMessageReportActionsUtils(reportID, canUserWrite, actionsToMerge);
 }
 
 /**
@@ -7076,10 +7077,7 @@ function getAllReportActionsErrorsAndReportActionThatRequiresAttention(report: O
     };
 }
 
-/**
- * Get an object of error messages keyed by microtime by combining all error objects related to the report.
- */
-function getAllReportErrors(report: OnyxEntry<Report>, reportActions: OnyxEntry<ReportActions>): Errors {
+function computeAllReportErrors(report: OnyxEntry<Report>, reportActions: OnyxEntry<ReportActions>): Errors {
     const reportErrorFields = report?.errorFields ?? {};
     const {errors: reportActionErrors} = getAllReportActionsErrorsAndReportActionThatRequiresAttention(report, reportActions);
 
@@ -7101,9 +7099,18 @@ function getAllReportErrors(report: OnyxEntry<Report>, reportActions: OnyxEntry<
     return allReportErrors;
 }
 
+/**
+ * Get an object of error messages keyed by microtime by combining all error objects related to the report.
+ */
+function getAllReportErrors(report: OnyxEntry<Report>): Errors {
+    if (!report || !derivedReports) {
+        return {};
+    }
+    return derivedReports[report.reportID]?.errors;
+}
+
 function hasReportErrorsOtherThanFailedReceipt(report: Report, doesReportHaveViolations: boolean) {
-    const reportActions = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.reportID}`] ?? {};
-    const allReportErrors = getAllReportErrors(report, reportActions) ?? {};
+    const allReportErrors = getAllReportErrors(report) ?? {};
     const transactionReportActions = getAllReportActions(report.reportID);
     const oneTransactionThreadReportID = getOneTransactionThreadReportID(report.reportID, transactionReportActions, undefined);
     let doesTransactionThreadReportHasViolations = false;
@@ -7861,7 +7868,7 @@ function isMoneyRequestReportPendingDeletion(reportOrID: OnyxEntry<Report> | str
     return parentReportAction?.pendingAction === CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE;
 }
 
-function canUserPerformWriteAction(report: OnyxEntry<Report>) {
+function computeCanUserPerformWriteAction(report: OnyxEntry<Report>) {
     const reportErrors = getAddWorkspaceRoomOrChatReportErrors(report);
 
     // If the expense report is marked for deletion, let us prevent any further write action.
@@ -7871,6 +7878,14 @@ function canUserPerformWriteAction(report: OnyxEntry<Report>) {
 
     const reportNameValuePairs = getReportNameValuePairs(report?.reportID);
     return !isArchivedNonExpenseReport(report, reportNameValuePairs) && isEmptyObject(reportErrors) && report && isAllowedToComment(report) && !isAnonymousUser && canWriteInReport(report);
+}
+
+function canUserPerformWriteAction(report: OnyxEntry<Report>) {
+    if (!report || !derivedReports) {
+        return false;
+    }
+
+    return derivedReports[report.reportID]?.canUserPerformWriteAction;
 }
 
 /**
@@ -9519,6 +9534,8 @@ export {
     isHiddenForCurrentUser,
     prepareOnboardingOnyxData,
     hasAnyViolationsToDisplayRBR,
+    computeAllReportErrors,
+    computeCanUserPerformWriteAction,
 };
 
 export type {

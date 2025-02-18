@@ -1,3 +1,5 @@
+import type {Errors} from './OnyxCommon';
+
 /**
  * A derived value that contains information about the report
  */
@@ -7,6 +9,12 @@ type OnyxDerivedReport = {
 
     /** Whether the report requires attention from the current user */
     requiresAttentionFromCurrentUser: boolean;
+
+    /** All errors for the report */
+    errors: Errors;
+
+    /** Whether the user can perform write actions on the report */
+    canUserPerformWriteAction: boolean;
 };
 
 /**

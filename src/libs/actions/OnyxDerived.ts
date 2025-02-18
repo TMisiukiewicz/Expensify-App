@@ -3,7 +3,7 @@ import Onyx from 'react-native-onyx';
 import OnyxUtils from 'react-native-onyx/dist/OnyxUtils';
 import type {NonEmptyTuple, ValueOf} from 'type-fest';
 import {getReportAction} from '@libs/ReportActionsUtils';
-import {getReasonAndReportActionThatRequiresAttention, hasAnyViolationsToDisplayRBR, isThread} from '@libs/ReportUtils';
+import {computeAllReportErrors, computeCanUserPerformWriteAction, getReasonAndReportActionThatRequiresAttention, hasAnyViolationsToDisplayRBR, isThread} from '@libs/ReportUtils';
 import CONST from '@src/CONST';
 import type {GetOnyxTypeForKey, OnyxDerivedKey, OnyxDerivedValuesMapping, OnyxKey} from '@src/ONYXKEYS';
 import ONYXKEYS from '@src/ONYXKEYS';
@@ -78,8 +78,8 @@ const ONYX_DERIVED_VALUES = {
     }),
     [ONYXKEYS.DERIVED.REPORTS]: createOnyxDerivedValueConfig({
         key: ONYXKEYS.DERIVED.REPORTS,
-        dependencies: [ONYXKEYS.COLLECTION.REPORT, ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS],
-        compute: ([reports, transactionViolations]) => {
+        dependencies: [ONYXKEYS.COLLECTION.REPORT, ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS, ONYXKEYS.COLLECTION.REPORT_ACTIONS],
+        compute: ([reports, transactionViolations, allReportActions]) => {
             if (!reports || !transactionViolations) {
                 return {};
             }
@@ -92,10 +92,15 @@ const ONYX_DERIVED_VALUES = {
                 const hasAnyViolations = hasAnyViolationsToDisplayRBR(report, transactionViolations);
                 const parentReportAction = getReportAction(report.parentReportID, report.parentReportActionID);
                 const reasonAndReportActionThatRequiresAttention = getReasonAndReportActionThatRequiresAttention(report, parentReportAction);
+                const reportActions = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.reportID}`] ?? {};
+                const errors = computeAllReportErrors(report, reportActions);
+                const canUserPerformWriteAction = computeCanUserPerformWriteAction(report);
 
                 acc[report.reportID] = {
                     hasAnyViolations,
                     requiresAttentionFromCurrentUser: !!reasonAndReportActionThatRequiresAttention,
+                    errors,
+                    canUserPerformWriteAction: canUserPerformWriteAction ?? false,
                 };
 
                 return acc;

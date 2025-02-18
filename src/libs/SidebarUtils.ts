@@ -333,7 +333,7 @@ type ReasonAndReportActionThatHasRedBrickRoad = {
 
 function getReasonAndReportActionThatHasRedBrickRoad(report: Report, reportActions: OnyxEntry<ReportActions>, hasViolations: boolean): ReasonAndReportActionThatHasRedBrickRoad | null {
     const {reportAction} = getAllReportActionsErrorsAndReportActionThatRequiresAttention(report, reportActions);
-    const errors = getAllReportErrors(report, reportActions);
+    const errors = getAllReportErrors(report);
     const hasErrors = Object.keys(errors).length !== 0;
 
     if (shouldDisplayViolationsRBRInLHN(report)) {
@@ -399,7 +399,7 @@ function getOptionData({
     const result: OptionData = {
         text: '',
         alternateText: undefined,
-        allReportErrors: getAllReportErrors(report, reportActions),
+        allReportErrors: getAllReportErrors(report),
         brickRoadIndicator: null,
         tooltipText: null,
         subtitle: undefined,
