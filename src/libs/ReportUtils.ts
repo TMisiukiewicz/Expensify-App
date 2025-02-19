@@ -951,10 +951,15 @@ let reportAttributes: OnyxEntry<OnyxDerivedReportAttibutes>;
 Onyx.connect({
     key: ONYXKEYS.DERIVED.REPORT_ATTRIBUTES,
     callback: (value) => {
-        if (!value) {
-            return;
-        }
         reportAttributes = value;
+    },
+});
+
+let selfDMReportID: OnyxEntry<string>;
+Onyx.connect({
+    key: ONYXKEYS.DERIVED.SELF_DM_REPORT_ID,
+    callback: (value) => {
+        selfDMReportID = value;
     },
 });
 
@@ -1166,6 +1171,10 @@ function isReportIDApproved(reportID: string | undefined) {
     return isReportApproved({report});
 }
 
+function computeIsExpenseReport(report: OnyxEntry<Report>): boolean {
+    return report?.type === CONST.REPORT.TYPE.EXPENSE;
+}
+
 /**
  * Checks if a report is an Expense report.
  */
@@ -1173,6 +1182,7 @@ function isExpenseReport(report: OnyxInputOrEntry<Report> | SearchReport): boole
     if (!report || !reportAttributes) {
         return false;
     }
+
     return reportAttributes[report.reportID].isExpenseReport;
 }
 
@@ -1361,6 +1371,10 @@ function isDomainRoom(report: OnyxEntry<Report>): boolean {
     return getChatType(report) === CONST.REPORT.CHAT_TYPE.DOMAIN_ALL;
 }
 
+function computeIsUserCreatedPolicyRoom(report: OnyxEntry<Report>): boolean {
+    getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ROOM;
+}
+
 /**
  * Whether the provided report is a user created policy room
  */
@@ -1535,6 +1549,10 @@ function isWorkspaceTaskReport(report: OnyxEntry<Report>): boolean {
     return isPolicyExpenseChat(parentReport);
 }
 
+function computeIsThread(report: OnyxInputOrEntry<Report>): boolean {
+    return !!(report?.parentReportID && report?.parentReportActionID);
+}
+
 /**
  * Returns true if report has a parent
  */
@@ -1542,6 +1560,7 @@ function isThread(report: OnyxInputOrEntry<Report>): report is Thread {
     if (!report || !reportAttributes) {
         return false;
     }
+
     return reportAttributes[report.reportID].isThread;
 }
 
@@ -1621,12 +1640,7 @@ function isConciergeChatReport(report: OnyxInputOrEntry<Report>): boolean {
 }
 
 function findSelfDMReportID(): string | undefined {
-    if (!allReports) {
-        return;
-    }
-
-    const selfDMReport = Object.values(allReports).find((report) => isSelfDM(report) && !isThread(report));
-    return selfDMReport?.reportID;
+    return selfDMReportID;
 }
 
 /**
@@ -2001,10 +2015,13 @@ function isChildReport(report: OnyxEntry<Report>): boolean {
 }
 
 function computeIsExpenseRequest(report: OnyxInputOrEntry<Report>): boolean {
-    if (isThread(report)) {
+    if (!report) {
+        return false;
+    }
+    if (computeIsThread(report)) {
         const parentReportAction = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.parentReportID}`]?.[report.parentReportActionID];
         const parentReport = getReport(report?.parentReportID, allReports);
-        return isExpenseReport(parentReport) && !isEmptyObject(parentReportAction) && isTransactionThread(parentReportAction);
+        return computeIsExpenseReport(parentReport) && !isEmptyObject(parentReportAction) && isTransactionThread(parentReportAction);
     }
     return false;
 }
@@ -2021,7 +2038,7 @@ function isExpenseRequest(report: OnyxInputOrEntry<Report>): report is Thread {
 }
 
 function computeIsIOURequest(report: OnyxInputOrEntry<Report>): boolean {
-    if (isThread(report)) {
+    if (computeIsThread(report)) {
         const parentReportAction = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.parentReportID}`]?.[report.parentReportActionID];
         const parentReport = getReport(report?.parentReportID, allReports);
         return isIOUReport(parentReport) && !isEmptyObject(parentReportAction) && isTransactionThread(parentReportAction);
@@ -2041,10 +2058,10 @@ function isIOURequest(report: OnyxInputOrEntry<Report>): boolean {
 }
 
 function computeIsTrackExpenseReport(report: OnyxInputOrEntry<Report>): boolean {
-    if (isThread(report)) {
-        const selfDMReportID = findSelfDMReportID();
+    if (computeIsThread(report)) {
+        const selfDMId = findSelfDMReportID();
         const parentReportAction = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.parentReportID}`]?.[report.parentReportActionID];
-        return !isEmptyObject(parentReportAction) && selfDMReportID === report.parentReportID && isTrackExpenseAction(parentReportAction);
+        return !isEmptyObject(parentReportAction) && selfDMId === report.parentReportID && isTrackExpenseAction(parentReportAction);
     }
 
     return false;
@@ -2071,17 +2088,23 @@ function isMoneyRequest(reportOrID: OnyxEntry<Report> | string): boolean {
 
 function computeIsMoneyRequest(reportOrID: OnyxEntry<Report> | string): boolean {
     const report = typeof reportOrID === 'string' ? getReport(reportOrID, allReports) ?? null : reportOrID;
-    return isIOURequest(report) || isExpenseRequest(report);
+
+    return computeIsIOURequest(report) || computeIsExpenseRequest(report);
 }
 
 /**
  * Checks if a report is an IOU or expense report.
  */
-function isMoneyRequestReport(reportOrID: OnyxInputOrEntry<Report> | SearchReport | string, reports?: SearchReport[]): boolean {
+function isMoneyRequestReport(reportOrID: OnyxInputOrEntry<Report> | SearchReport | string): boolean {
     if (!reportOrID || !reportAttributes) {
         return false;
     }
     const reportID = typeof reportOrID === 'string' ? reportOrID : reportOrID.reportID;
+
+    if (!reportID) {
+        return false;
+    }
+
     return reportAttributes[reportID].isMoneyRequestReport;
 }
 
@@ -3292,7 +3315,7 @@ function hasNonReimbursableTransactions(iouReportID: string | undefined, reports
 function getMoneyRequestSpendBreakdown(report: OnyxInputOrEntry<Report>, searchReports?: SearchReport[]): SpendBreakdown {
     const reports = searchReports ?? allReports;
     let moneyRequestReport: OnyxEntry<Report>;
-    if (report && (isMoneyRequestReport(report, searchReports) || isInvoiceReport(report))) {
+    if (report && (isMoneyRequestReport(report) || isInvoiceReport(report))) {
         moneyRequestReport = report;
     }
     if (reports && report?.iouReportID) {
@@ -9638,6 +9661,8 @@ export {
     computeIsIOURequest,
     getChatType,
     computeIsTrackExpenseReport,
+    computeIsThread,
+    computeIsUserCreatedPolicyRoom,
 };
 
 export type {

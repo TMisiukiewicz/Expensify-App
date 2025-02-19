@@ -6,11 +6,13 @@ import {getReportAction} from '@libs/ReportActionsUtils';
 import {
     computeAllReportErrors,
     computeCanUserPerformWriteAction,
-    computeIsChatRoom,
     computeIsExpenseRequest,
     computeIsIOURequest,
     computeIsMoneyRequest,
+    computeIsSelfDM,
+    computeIsThread,
     computeIsTrackExpenseReport,
+    computeIsUserCreatedPolicyRoom,
     getChatType,
     getReasonAndReportActionThatRequiresAttention,
     hasAnyViolationsToDisplayRBR,
@@ -96,7 +98,7 @@ const ONYX_DERIVED_VALUES = {
         dependencies: [ONYXKEYS.COLLECTION.REPORT, ONYXKEYS.DERIVED.CONCIERGE_CHAT_REPORT_ID],
         compute: ([reports, conciergeChatReportID]) => {
             if (!reports) {
-                return {};
+                return undefined;
             }
 
             return Object.values(reports).reduce<OnyxTypes.OnyxDerivedReportAttibutes>((acc, report) => {
@@ -104,17 +106,21 @@ const ONYX_DERIVED_VALUES = {
                     return acc;
                 }
 
-                const isThread = !!(report?.parentReportID && report?.parentReportActionID);
+                const isThread = computeIsThread(report);
                 const isChatReport = report?.type === CONST.REPORT.TYPE.CHAT;
                 const isTaskReport = report?.type === CONST.REPORT.TYPE.TASK;
+                const isUserCreatedPolicyRoom = computeIsUserCreatedPolicyRoom(report);
+                const isDefaultRoom = CONST.DEFAULT_POLICY_ROOM_CHAT_TYPES.some((type) => type === getChatType(report));
+                const isInvoiceRoom = getChatType(report) === CONST.REPORT.CHAT_TYPE.INVOICE;
+                const isTripRoom = getChatType(report) === CONST.REPORT.CHAT_TYPE.TRIP_ROOM;
 
                 acc[report.reportID] = {
                     isThread,
                     isChatThread: isThread && report?.type === CONST.REPORT.TYPE.CHAT,
-                    isChatRoom: computeIsChatRoom(report),
-                    isChatReport: report?.type === CONST.REPORT.TYPE.CHAT,
-                    isInvoiceRoom: getChatType(report) === CONST.REPORT.CHAT_TYPE.INVOICE,
-                    isTaskReport: report?.type === CONST.REPORT.TYPE.TASK,
+                    isChatRoom: isUserCreatedPolicyRoom || isDefaultRoom || isInvoiceRoom || isTripRoom,
+                    isChatReport,
+                    isInvoiceRoom,
+                    isTaskReport,
                     isInvoiceReport: report?.type === CONST.REPORT.TYPE.INVOICE,
                     isPolicyExpenseChat: getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_EXPENSE_CHAT,
                     isExpenseRequest: computeIsExpenseRequest(report),
@@ -123,9 +129,9 @@ const ONYX_DERIVED_VALUES = {
                     isSelfDM: getChatType(report) === CONST.REPORT.CHAT_TYPE.SELF_DM,
                     isConciergeChat: report.reportID === conciergeChatReportID,
                     isSystemChat: getChatType(report) === CONST.REPORT.CHAT_TYPE.SYSTEM,
-                    isDefaultRoom: CONST.DEFAULT_POLICY_ROOM_CHAT_TYPES.some((type) => type === getChatType(report)),
-                    isUserCreatedPolicyRoom: getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ROOM,
-                    isTripRoom: isChatReport && getChatType(report) === CONST.REPORT.CHAT_TYPE.TRIP_ROOM,
+                    isDefaultRoom,
+                    isUserCreatedPolicyRoom,
+                    isTripRoom,
                     isChildReport: isThread || isTaskReport,
                     isIOURequest: computeIsIOURequest(report),
                     isTrackExpenseReport: computeIsTrackExpenseReport(report),
@@ -164,6 +170,20 @@ const ONYX_DERIVED_VALUES = {
 
                 return acc;
             }, {});
+        },
+    }),
+    [ONYXKEYS.DERIVED.SELF_DM_REPORT_ID]: createOnyxDerivedValueConfig({
+        key: ONYXKEYS.DERIVED.SELF_DM_REPORT_ID,
+        dependencies: [ONYXKEYS.COLLECTION.REPORT],
+        compute: ([reports], selfDMReportID) => {
+            if (selfDMReportID) {
+                return selfDMReportID;
+            }
+            if (!reports) {
+                return;
+            }
+
+            return Object.values(reports).find((report) => computeIsSelfDM(report))?.reportID;
         },
     }),
 } as const;
