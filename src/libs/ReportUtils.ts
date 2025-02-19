@@ -1590,7 +1590,10 @@ function isSelfDM(report: OnyxInputOrEntry<Report>): boolean {
 }
 
 function isGroupChat(report: OnyxEntry<Report> | Partial<Report>): boolean {
-    return getChatType(report) === CONST.REPORT.CHAT_TYPE.GROUP;
+    if (!report || !reportAttributes?.[report.reportID]) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isGroupChat;
 }
 
 /**

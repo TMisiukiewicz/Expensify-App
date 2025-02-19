@@ -108,6 +108,10 @@ type OnyxDerivedReportAttibutes = Record<
          *
          */
         isTrackExpenseReport: boolean;
+        /**
+         *
+         */
+        isGroupChat: boolean;
     }
 >;
 

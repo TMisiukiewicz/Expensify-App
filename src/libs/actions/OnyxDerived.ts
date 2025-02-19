@@ -135,6 +135,7 @@ const ONYX_DERIVED_VALUES = {
                     isChildReport: isThread || isTaskReport,
                     isIOURequest: computeIsIOURequest(report),
                     isTrackExpenseReport: computeIsTrackExpenseReport(report),
+                    isGroupChat: getChatType(report) === CONST.REPORT.CHAT_TYPE.GROUP,
                 };
 
                 return acc;
