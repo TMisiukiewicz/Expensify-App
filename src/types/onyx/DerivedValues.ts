@@ -22,4 +22,93 @@ type OnyxDerivedReport = {
  */
 type OnyxDerivedReportsList = Record<string, OnyxDerivedReport>;
 
-export type {OnyxDerivedReport, OnyxDerivedReportsList};
+/**
+ * Report attributes derived from the report data
+ */
+type OnyxDerivedReportAttibutes = Record<
+    string,
+    {
+        /**
+         *
+         */
+        isThread: boolean;
+        /**
+         *
+         */
+        isChatThread: boolean;
+        /**
+         *
+         */
+        isChatRoom: boolean;
+        /**
+         *
+         */
+        isChatReport: boolean;
+        /**
+         *
+         */
+        isInvoiceRoom: boolean;
+        /**
+         *
+         */
+        isTaskReport: boolean;
+        /**
+         *
+         */
+        isInvoiceReport: boolean;
+        /**
+         *
+         */
+        isPolicyExpenseChat: boolean;
+        /**
+         *
+         */
+        isExpenseRequest: boolean;
+        /**
+         *
+         */
+        isExpenseReport: boolean;
+        /**
+         *
+         */
+        isMoneyRequestReport: boolean;
+        /**
+         *
+         */
+        isSelfDM: boolean;
+        /**
+         *
+         */
+        isConciergeChat: boolean;
+        /**
+         *
+         */
+        isSystemChat: boolean;
+        /**
+         *
+         */
+        isDefaultRoom: boolean;
+        /**
+         *
+         */
+        isUserCreatedPolicyRoom: boolean;
+        /**
+         *
+         */
+        isTripRoom: boolean;
+        /**
+         *
+         */
+        isChildReport: boolean;
+        /**
+         *
+         */
+        isIOURequest: boolean;
+        /**
+         *
+         */
+        isTrackExpenseReport: boolean;
+    }
+>;
+
+export type {OnyxDerivedReport, OnyxDerivedReportsList, OnyxDerivedReportAttibutes};

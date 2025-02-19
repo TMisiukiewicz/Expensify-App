@@ -3,7 +3,19 @@ import Onyx from 'react-native-onyx';
 import OnyxUtils from 'react-native-onyx/dist/OnyxUtils';
 import type {NonEmptyTuple, ValueOf} from 'type-fest';
 import {getReportAction} from '@libs/ReportActionsUtils';
-import {computeAllReportErrors, computeCanUserPerformWriteAction, getReasonAndReportActionThatRequiresAttention, hasAnyViolationsToDisplayRBR, isThread} from '@libs/ReportUtils';
+import {
+    computeAllReportErrors,
+    computeCanUserPerformWriteAction,
+    computeIsChatRoom,
+    computeIsExpenseRequest,
+    computeIsIOURequest,
+    computeIsMoneyRequest,
+    computeIsTrackExpenseReport,
+    getChatType,
+    getReasonAndReportActionThatRequiresAttention,
+    hasAnyViolationsToDisplayRBR,
+    isThread as isThreadUtil,
+} from '@libs/ReportUtils';
 import CONST from '@src/CONST';
 import type {GetOnyxTypeForKey, OnyxDerivedKey, OnyxDerivedValuesMapping, OnyxKey} from '@src/ONYXKEYS';
 import ONYXKEYS from '@src/ONYXKEYS';
@@ -22,9 +34,12 @@ import type SymmetricDifference from '@src/types/utils/SymmetricDifference';
 type OnyxDerivedValueConfig<Key extends ValueOf<typeof ONYXKEYS.DERIVED>, Deps extends NonEmptyTuple<Exclude<OnyxKey, Key>>> = {
     key: Key;
     dependencies: Deps;
-    compute: (args: {
-        -readonly [Index in keyof Deps]: GetOnyxTypeForKey<Deps[Index]>;
-    }) => OnyxEntry<OnyxDerivedValuesMapping[Key]>;
+    compute: (
+        args: {
+            -readonly [Index in keyof Deps]: GetOnyxTypeForKey<Deps[Index]>;
+        },
+        currentValue: OnyxEntry<OnyxDerivedValuesMapping[Key]>,
+    ) => OnyxEntry<OnyxDerivedValuesMapping[Key]>;
 };
 
 /**
@@ -61,7 +76,7 @@ const ONYX_DERIVED_VALUES = {
             }
 
             const conciergeReport = Object.values(reports).find((report) => {
-                if (!report?.participants || isThread(report)) {
+                if (!report?.participants || isThreadUtil(report)) {
                     return false;
                 }
 
@@ -74,6 +89,50 @@ const ONYX_DERIVED_VALUES = {
             });
 
             return conciergeReport?.reportID;
+        },
+    }),
+    [ONYXKEYS.DERIVED.REPORT_ATTRIBUTES]: createOnyxDerivedValueConfig({
+        key: ONYXKEYS.DERIVED.REPORT_ATTRIBUTES,
+        dependencies: [ONYXKEYS.COLLECTION.REPORT, ONYXKEYS.DERIVED.CONCIERGE_CHAT_REPORT_ID],
+        compute: ([reports, conciergeChatReportID]) => {
+            if (!reports) {
+                return {};
+            }
+
+            return Object.values(reports).reduce<OnyxTypes.OnyxDerivedReportAttibutes>((acc, report) => {
+                if (!report) {
+                    return acc;
+                }
+
+                const isThread = !!(report?.parentReportID && report?.parentReportActionID);
+                const isChatReport = report?.type === CONST.REPORT.TYPE.CHAT;
+                const isTaskReport = report?.type === CONST.REPORT.TYPE.TASK;
+
+                acc[report.reportID] = {
+                    isThread,
+                    isChatThread: isThread && report?.type === CONST.REPORT.TYPE.CHAT,
+                    isChatRoom: computeIsChatRoom(report),
+                    isChatReport: report?.type === CONST.REPORT.TYPE.CHAT,
+                    isInvoiceRoom: getChatType(report) === CONST.REPORT.CHAT_TYPE.INVOICE,
+                    isTaskReport: report?.type === CONST.REPORT.TYPE.TASK,
+                    isInvoiceReport: report?.type === CONST.REPORT.TYPE.INVOICE,
+                    isPolicyExpenseChat: getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_EXPENSE_CHAT,
+                    isExpenseRequest: computeIsExpenseRequest(report),
+                    isExpenseReport: report?.type === CONST.REPORT.TYPE.EXPENSE,
+                    isMoneyRequestReport: computeIsMoneyRequest(report),
+                    isSelfDM: getChatType(report) === CONST.REPORT.CHAT_TYPE.SELF_DM,
+                    isConciergeChat: report.reportID === conciergeChatReportID,
+                    isSystemChat: getChatType(report) === CONST.REPORT.CHAT_TYPE.SYSTEM,
+                    isDefaultRoom: CONST.DEFAULT_POLICY_ROOM_CHAT_TYPES.some((type) => type === getChatType(report)),
+                    isUserCreatedPolicyRoom: getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ROOM,
+                    isTripRoom: isChatReport && getChatType(report) === CONST.REPORT.CHAT_TYPE.TRIP_ROOM,
+                    isChildReport: isThread || isTaskReport,
+                    isIOURequest: computeIsIOURequest(report),
+                    isTrackExpenseReport: computeIsTrackExpenseReport(report),
+                };
+
+                return acc;
+            }, {});
         },
     }),
     [ONYXKEYS.DERIVED.REPORTS]: createOnyxDerivedValueConfig({
@@ -133,7 +192,7 @@ function init() {
             if (!derivedValue) {
                 getOnyxValues(dependencies).then((values) => {
                     dependencyValues = values;
-                    derivedValue = compute(values);
+                    derivedValue = compute(values, derivedValue);
                     Onyx.set(key, derivedValue ?? null);
                 });
             }
@@ -143,7 +202,7 @@ function init() {
             };
 
             const recomputeDerivedValue = () => {
-                const newDerivedValue = compute(dependencyValues);
+                const newDerivedValue = compute(dependencyValues, derivedValue);
                 if (newDerivedValue !== derivedValue) {
                     derivedValue = newDerivedValue;
                     Onyx.set(key, derivedValue ?? null);

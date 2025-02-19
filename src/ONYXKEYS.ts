@@ -763,6 +763,7 @@ const ONYXKEYS = {
     DERIVED: {
         CONCIERGE_CHAT_REPORT_ID: 'conciergeChatReportID',
         REPORTS: 'derivedReports',
+        REPORT_ATTRIBUTES: 'reportAttributes',
     },
 } as const;
 
@@ -1088,6 +1089,7 @@ type OnyxValuesMapping = {
 type OnyxDerivedValuesMapping = {
     [ONYXKEYS.DERIVED.CONCIERGE_CHAT_REPORT_ID]: string;
     [ONYXKEYS.DERIVED.REPORTS]: OnyxTypes.OnyxDerivedReportsList;
+    [ONYXKEYS.DERIVED.REPORT_ATTRIBUTES]: OnyxTypes.OnyxDerivedReportAttibutes;
 };
 
 type OnyxValues = OnyxValuesMapping & OnyxCollectionValuesMapping & OnyxFormValuesMapping & OnyxFormDraftValuesMapping & OnyxDerivedValuesMapping;

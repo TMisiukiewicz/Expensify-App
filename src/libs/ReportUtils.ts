@@ -26,6 +26,7 @@ import ROUTES from '@src/ROUTES';
 import SCREENS from '@src/SCREENS';
 import type {
     Beta,
+    OnyxDerivedReportAttibutes,
     OnyxDerivedReportsList,
     OnyxInputOrEntry,
     PersonalDetails,
@@ -946,6 +947,17 @@ Onyx.connect({
     },
 });
 
+let reportAttributes: OnyxEntry<OnyxDerivedReportAttibutes>;
+Onyx.connect({
+    key: ONYXKEYS.DERIVED.REPORT_ATTRIBUTES,
+    callback: (value) => {
+        if (!value) {
+            return;
+        }
+        reportAttributes = value;
+    },
+});
+
 function getCurrentUserAvatar(): AvatarSource | undefined {
     return currentUserPersonalDetails?.avatar;
 }
@@ -1119,11 +1131,17 @@ function getReportParticipantsTitle(accountIDs: number[]): string {
  * Checks if a report is a chat report.
  */
 function isChatReport(report: OnyxEntry<Report>): boolean {
-    return report?.type === CONST.REPORT.TYPE.CHAT;
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isChatReport;
 }
 
 function isInvoiceReport(report: OnyxInputOrEntry<Report> | SearchReport): boolean {
-    return report?.type === CONST.REPORT.TYPE.INVOICE;
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isInvoiceReport;
 }
 
 function isNewDotInvoice(invoiceRoomID: string | undefined): boolean {
@@ -1152,7 +1170,10 @@ function isReportIDApproved(reportID: string | undefined) {
  * Checks if a report is an Expense report.
  */
 function isExpenseReport(report: OnyxInputOrEntry<Report> | SearchReport): boolean {
-    return report?.type === CONST.REPORT.TYPE.EXPENSE;
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isExpenseReport;
 }
 
 /**
@@ -1173,7 +1194,10 @@ function isIOUReportUsingReport(report: OnyxEntry<Report>): report is Report {
  * Checks if a report is a task report.
  */
 function isTaskReport(report: OnyxInputOrEntry<Report>): boolean {
-    return report?.type === CONST.REPORT.TYPE.TASK;
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isTaskReport;
 }
 
 /**
@@ -1324,7 +1348,10 @@ function isAnnounceRoom(report: OnyxEntry<Report>): boolean {
  * Whether the provided report is a default room
  */
 function isDefaultRoom(report: OnyxEntry<Report>): boolean {
-    return CONST.DEFAULT_POLICY_ROOM_CHAT_TYPES.some((type) => type === getChatType(report));
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isDefaultRoom;
 }
 
 /**
@@ -1338,18 +1365,27 @@ function isDomainRoom(report: OnyxEntry<Report>): boolean {
  * Whether the provided report is a user created policy room
  */
 function isUserCreatedPolicyRoom(report: OnyxEntry<Report>): boolean {
-    return getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ROOM;
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isUserCreatedPolicyRoom;
 }
 
 /**
  * Whether the provided report is a Policy Expense chat.
  */
 function isPolicyExpenseChat(option: OnyxInputOrEntry<Report> | OptionData | Participant): boolean {
-    return getChatType(option) === CONST.REPORT.CHAT_TYPE.POLICY_EXPENSE_CHAT || !!(option && 'isPolicyExpenseChat' in option && option.isPolicyExpenseChat);
+    if (!option || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[option.reportID].isPolicyExpenseChat;
 }
 
 function isInvoiceRoom(report: OnyxEntry<Report>): boolean {
-    return getChatType(report) === CONST.REPORT.CHAT_TYPE.INVOICE;
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isInvoiceRoom;
 }
 
 function isInvoiceRoomWithID(reportID?: string): boolean {
@@ -1364,7 +1400,10 @@ function isInvoiceRoomWithID(reportID?: string): boolean {
  * Checks if a report is a completed task report.
  */
 function isTripRoom(report: OnyxEntry<Report>): boolean {
-    return isChatReport(report) && getChatType(report) === CONST.REPORT.CHAT_TYPE.TRIP_ROOM;
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isTripRoom;
 }
 
 function isIndividualInvoiceRoom(report: OnyxEntry<Report>): boolean {
@@ -1442,11 +1481,18 @@ function isOpenInvoiceReport(report: OnyxEntry<Report>): boolean {
     return isInvoiceReport(report) && report?.statusNum === CONST.REPORT.STATUS_NUM.OPEN;
 }
 
+function computeIsChatRoom(report: OnyxEntry<Report>): boolean {
+    return isUserCreatedPolicyRoom(report) || isDefaultRoom(report) || isInvoiceRoom(report) || isTripRoom(report);
+}
+
 /**
  * Whether the provided report is a chat room
  */
 function isChatRoom(report: OnyxEntry<Report>): boolean {
-    return isUserCreatedPolicyRoom(report) || isDefaultRoom(report) || isInvoiceRoom(report) || isTripRoom(report);
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isChatRoom;
 }
 
 /**
@@ -1493,22 +1539,35 @@ function isWorkspaceTaskReport(report: OnyxEntry<Report>): boolean {
  * Returns true if report has a parent
  */
 function isThread(report: OnyxInputOrEntry<Report>): report is Thread {
-    return !!(report?.parentReportID && report?.parentReportActionID);
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isThread;
 }
 
 /**
  * Returns true if report is of type chat and has a parent and is therefore a Thread.
  */
 function isChatThread(report: OnyxInputOrEntry<Report>): report is Thread {
-    return isThread(report) && report?.type === CONST.REPORT.TYPE.CHAT;
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isChatThread;
 }
 
 function isDM(report: OnyxEntry<Report>): boolean {
     return isChatReport(report) && !getChatType(report) && !isThread(report);
 }
 
-function isSelfDM(report: OnyxInputOrEntry<Report>): boolean {
+function computeIsSelfDM(report: OnyxInputOrEntry<Report>): boolean {
     return getChatType(report) === CONST.REPORT.CHAT_TYPE.SELF_DM;
+}
+
+function isSelfDM(report: OnyxInputOrEntry<Report>): boolean {
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isSelfDM;
 }
 
 function isGroupChat(report: OnyxEntry<Report> | Partial<Report>): boolean {
@@ -1521,7 +1580,10 @@ function isGroupChat(report: OnyxEntry<Report> | Partial<Report>): boolean {
  * Note that this chat is no longer used for new users. We still need this function for users who have this chat.
  */
 function isSystemChat(report: OnyxEntry<Report>): boolean {
-    return getChatType(report) === CONST.REPORT.CHAT_TYPE.SYSTEM;
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isSystemChat;
 }
 
 function getDefaultNotificationPreferenceForReport(report: OnyxEntry<Report>): ValueOf<typeof CONST.REPORT.NOTIFICATION_PREFERENCE> {
@@ -1932,14 +1994,13 @@ function isWorkspaceThread(report: OnyxEntry<Report>): boolean {
  * Checks if a report is a child report.
  */
 function isChildReport(report: OnyxEntry<Report>): boolean {
-    return isThread(report) || isTaskReport(report);
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isChildReport;
 }
 
-/**
- * An Expense Request is a thread where the parent report is an Expense Report and
- * the parentReportAction is a transaction.
- */
-function isExpenseRequest(report: OnyxInputOrEntry<Report>): report is Thread {
+function computeIsExpenseRequest(report: OnyxInputOrEntry<Report>): boolean {
     if (isThread(report)) {
         const parentReportAction = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.parentReportID}`]?.[report.parentReportActionID];
         const parentReport = getReport(report?.parentReportID, allReports);
@@ -1949,10 +2010,17 @@ function isExpenseRequest(report: OnyxInputOrEntry<Report>): report is Thread {
 }
 
 /**
- * An IOU Request is a thread where the parent report is an IOU Report and
+ * An Expense Request is a thread where the parent report is an Expense Report and
  * the parentReportAction is a transaction.
  */
-function isIOURequest(report: OnyxInputOrEntry<Report>): boolean {
+function isExpenseRequest(report: OnyxInputOrEntry<Report>): report is Thread {
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isExpenseRequest;
+}
+
+function computeIsIOURequest(report: OnyxInputOrEntry<Report>): boolean {
     if (isThread(report)) {
         const parentReportAction = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.parentReportID}`]?.[report.parentReportActionID];
         const parentReport = getReport(report?.parentReportID, allReports);
@@ -1962,16 +2030,35 @@ function isIOURequest(report: OnyxInputOrEntry<Report>): boolean {
 }
 
 /**
- * A Track Expense Report is a thread where the parent the parentReportAction is a transaction, and
- * parentReportAction has type of track.
+ * An IOU Request is a thread where the parent report is an IOU Report and
+ * the parentReportAction is a transaction.
  */
-function isTrackExpenseReport(report: OnyxInputOrEntry<Report>): boolean {
+function isIOURequest(report: OnyxInputOrEntry<Report>): boolean {
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isIOURequest;
+}
+
+function computeIsTrackExpenseReport(report: OnyxInputOrEntry<Report>): boolean {
     if (isThread(report)) {
         const selfDMReportID = findSelfDMReportID();
         const parentReportAction = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.parentReportID}`]?.[report.parentReportActionID];
         return !isEmptyObject(parentReportAction) && selfDMReportID === report.parentReportID && isTrackExpenseAction(parentReportAction);
     }
+
     return false;
+}
+
+/**
+ * A Track Expense Report is a thread where the parent the parentReportAction is a transaction, and
+ * parentReportAction has type of track.
+ */
+function isTrackExpenseReport(report: OnyxInputOrEntry<Report>): boolean {
+    if (!report || !reportAttributes) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isTrackExpenseReport;
 }
 
 /**
@@ -1982,12 +2069,20 @@ function isMoneyRequest(reportOrID: OnyxEntry<Report> | string): boolean {
     return isIOURequest(report) || isExpenseRequest(report);
 }
 
+function computeIsMoneyRequest(reportOrID: OnyxEntry<Report> | string): boolean {
+    const report = typeof reportOrID === 'string' ? getReport(reportOrID, allReports) ?? null : reportOrID;
+    return isIOURequest(report) || isExpenseRequest(report);
+}
+
 /**
  * Checks if a report is an IOU or expense report.
  */
 function isMoneyRequestReport(reportOrID: OnyxInputOrEntry<Report> | SearchReport | string, reports?: SearchReport[]): boolean {
-    const report = typeof reportOrID === 'string' ? getReport(reportOrID, reports ?? allReports) ?? null : reportOrID;
-    return isIOUReport(report) || isExpenseReport(report);
+    if (!reportOrID || !reportAttributes) {
+        return false;
+    }
+    const reportID = typeof reportOrID === 'string' ? reportOrID : reportOrID.reportID;
+    return reportAttributes[reportID].isMoneyRequestReport;
 }
 
 /**
@@ -9391,6 +9486,7 @@ export {
     isClosedReport,
     isCanceledTaskReport,
     isChatReport,
+    computeIsChatRoom,
     isChatRoom,
     isTripRoom,
     isChatThread,
@@ -9408,6 +9504,7 @@ export {
     isEmptyReport,
     isRootGroupChat,
     isExpenseReport,
+    computeIsExpenseRequest,
     isExpenseRequest,
     isExpensifyOnlyParticipantInReport,
     isGroupChat,
@@ -9421,6 +9518,7 @@ export {
     isJoinRequestInAdminRoom,
     isDomainRoom,
     isMoneyRequest,
+    computeIsMoneyRequest,
     isMoneyRequestReport,
     isMoneyRequestReportPendingDeletion,
     isOneOnOneChat,
@@ -9449,6 +9547,7 @@ export {
     isReportMessageAttachment,
     isReportOwner,
     isReportParticipant,
+    computeIsSelfDM,
     isSelfDM,
     isSettled,
     isSystemChat,
@@ -9536,6 +9635,9 @@ export {
     hasAnyViolationsToDisplayRBR,
     computeAllReportErrors,
     computeCanUserPerformWriteAction,
+    computeIsIOURequest,
+    getChatType,
+    computeIsTrackExpenseReport,
 };
 
 export type {
