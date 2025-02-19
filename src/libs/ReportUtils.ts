@@ -1143,7 +1143,7 @@ function isChatReport(report: OnyxEntry<Report>): boolean {
 }
 
 function isInvoiceReport(report: OnyxInputOrEntry<Report> | SearchReport): boolean {
-    if (!report || !reportAttributes) {
+    if (!report || !reportAttributes?.[report.reportID]) {
         return false;
     }
     return reportAttributes[report.reportID].isInvoiceReport;
@@ -1179,7 +1179,7 @@ function computeIsExpenseReport(report: OnyxEntry<Report>): boolean {
  * Checks if a report is an Expense report.
  */
 function isExpenseReport(report: OnyxInputOrEntry<Report> | SearchReport): boolean {
-    if (!report || !reportAttributes) {
+    if (!report || !reportAttributes?.[report.reportID]) {
         return false;
     }
 
@@ -1372,7 +1372,7 @@ function isDomainRoom(report: OnyxEntry<Report>): boolean {
 }
 
 function computeIsUserCreatedPolicyRoom(report: OnyxEntry<Report>): boolean {
-    getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ROOM;
+    return getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ROOM;
 }
 
 /**
@@ -1389,7 +1389,7 @@ function isUserCreatedPolicyRoom(report: OnyxEntry<Report>): boolean {
  * Whether the provided report is a Policy Expense chat.
  */
 function isPolicyExpenseChat(option: OnyxInputOrEntry<Report> | OptionData | Participant): boolean {
-    if (!option || !reportAttributes) {
+    if (!option || !option.reportID || !reportAttributes?.[option.reportID]) {
         return false;
     }
     return reportAttributes[option.reportID].isPolicyExpenseChat;
@@ -2096,7 +2096,7 @@ function computeIsMoneyRequest(reportOrID: OnyxEntry<Report> | string): boolean 
  * Checks if a report is an IOU or expense report.
  */
 function isMoneyRequestReport(reportOrID: OnyxInputOrEntry<Report> | SearchReport | string): boolean {
-    if (!reportOrID || !reportAttributes) {
+    if (!reportOrID) {
         return false;
     }
     const reportID = typeof reportOrID === 'string' ? reportOrID : reportOrID.reportID;
@@ -2105,7 +2105,7 @@ function isMoneyRequestReport(reportOrID: OnyxInputOrEntry<Report> | SearchRepor
         return false;
     }
 
-    return reportAttributes[reportID].isMoneyRequestReport;
+    return reportAttributes?.[reportID]?.isMoneyRequestReport ?? false;
 }
 
 /**

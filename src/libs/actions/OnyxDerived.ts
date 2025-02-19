@@ -101,7 +101,7 @@ const ONYX_DERIVED_VALUES = {
                 return undefined;
             }
 
-            return Object.values(reports).reduce<OnyxTypes.OnyxDerivedReportAttibutes>((acc, report) => {
+            const attributes = Object.values(reports).reduce<OnyxTypes.OnyxDerivedReportAttibutes>((acc, report) => {
                 if (!report) {
                     return acc;
                 }
@@ -139,6 +139,8 @@ const ONYX_DERIVED_VALUES = {
 
                 return acc;
             }, {});
+
+            return attributes;
         },
     }),
     [ONYXKEYS.DERIVED.REPORTS]: createOnyxDerivedValueConfig({
