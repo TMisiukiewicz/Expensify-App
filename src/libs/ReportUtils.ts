@@ -1337,7 +1337,10 @@ function isCurrentUserSubmitter(reportID: string | undefined): boolean {
  * Whether the provided report is an Admin room
  */
 function isAdminRoom(report: OnyxEntry<Report>): boolean {
-    return getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ADMINS;
+    if (!report || !reportAttributes?.[report.reportID]) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isAdminRoom;
 }
 
 /**
@@ -1351,7 +1354,10 @@ function isAdminsOnlyPostingRoom(report: OnyxEntry<Report>): boolean {
  * Whether the provided report is a Announce room
  */
 function isAnnounceRoom(report: OnyxEntry<Report>): boolean {
-    return getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ANNOUNCE;
+    if (!report || !reportAttributes?.[report.reportID]) {
+        return false;
+    }
+    return reportAttributes[report.reportID].isAnnounceRoom;
 }
 
 /**

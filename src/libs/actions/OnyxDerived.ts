@@ -136,6 +136,8 @@ const ONYX_DERIVED_VALUES = {
                     isIOURequest: computeIsIOURequest(report),
                     isTrackExpenseReport: computeIsTrackExpenseReport(report),
                     isGroupChat: getChatType(report) === CONST.REPORT.CHAT_TYPE.GROUP,
+                    isAdminRoom: getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ADMINS,
+                    isAnnounceRoom: getChatType(report) === CONST.REPORT.CHAT_TYPE.POLICY_ANNOUNCE,
                 };
 
                 return acc;

@@ -164,6 +164,9 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         canEvict: false,
         selector: (parentReportActions) => getParentReportAction(parentReportActions, reportOnyx?.parentReportActionID),
     });
+    const [reportsAttributes] = useOnyx(ONYXKEYS.DERIVED.REPORT_ATTRIBUTES);
+    const reportAttributes = reportsAttributes?.[reportIDFromRoute];
+    console.log({reportAttributes});
     const [isLoadingApp] = useOnyx(ONYXKEYS.IS_LOADING_APP);
     const wasLoadingApp = usePrevious(isLoadingApp);
     const finishedLoadingApp = wasLoadingApp && !isLoadingApp;

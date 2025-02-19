@@ -112,6 +112,14 @@ type OnyxDerivedReportAttibutes = Record<
          *
          */
         isGroupChat: boolean;
+        /**
+         *
+         */
+        isAdminRoom: boolean;
+        /**
+         *
+         */
+        isAnnounceRoom: boolean;
     }
 >;
 
