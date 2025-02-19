@@ -107,6 +107,7 @@ import type {
     MarkReimbursedFromIntegrationParams,
     MissingPropertyParams,
     MovedFromPersonalSpaceParams,
+    NeedCategoryForExportToIntegrationParams,
     NoLongerHaveAccessParams,
     NotAllowedExtensionParams,
     NotYouParams,
@@ -854,17 +855,15 @@ const translations = {
     },
     quickAction: {
         scanReceipt: 'Escanear recibo',
-        recordDistance: 'Grabar distancia',
+        recordDistance: 'Gasto de distancia',
         requestMoney: 'Crear gasto',
+        perDiem: 'Crear dietas',
         splitBill: 'Dividir gasto',
         splitScan: 'Dividir recibo',
         splitDistance: 'Dividir distancia',
         paySomeone: ({name}: PaySomeoneParams = {}) => `Pagar a ${name ?? 'alguien'}`,
         assignTask: 'Assignar tarea',
         header: 'Acción rápida',
-        trackManual: 'Crear gasto',
-        trackScan: 'Escanear recibo',
-        trackDistance: 'Crear gasto por desplazamiento',
         noLongerHaveReportAccess: 'Ya no tienes acceso al destino previo de esta acción rápida. Escoge uno nuevo a continuación.',
         updateDestination: 'Actualiza el destino',
     },
@@ -950,6 +949,7 @@ const translations = {
             other: '¿Estás seguro de que quieres eliminar estas solicitudes?',
         }),
         settledExpensify: 'Pagado',
+        done: 'Listo',
         settledElsewhere: 'Pagado de otra forma',
         individual: 'Individual',
         business: 'Empresa',
@@ -1154,6 +1154,9 @@ const translations = {
         resolutionConstraints: ({minHeightInPx, minWidthInPx, maxHeightInPx, maxWidthInPx}: ResolutionConstraintsParams) =>
             `Por favor, elige una imagen más grande que ${minHeightInPx}x${minWidthInPx} píxeles y más pequeña que ${maxHeightInPx}x${maxWidthInPx} píxeles.`,
         notAllowedExtension: ({allowedExtensions}: NotAllowedExtensionParams) => `La foto de perfil debe ser de uno de los siguientes tipos: ${allowedExtensions.join(', ')}.`,
+    },
+    modal: {
+        backdropLabel: 'Fondo del Modal',
     },
     profilePage: {
         profile: 'Perfil',
@@ -2652,6 +2655,10 @@ const translations = {
             title: 'Comienza con Expensify Travel',
             message: 'Tendrás que usar tu correo electrónico laboral (por ejemplo, nombre@empresa.com) con Expensify Travel, no tu correo personal (por ejemplo, nombre@gmail.com).',
         },
+        maintenance: {
+            title: '¡Expensify Travel está recibiendo una actualización! 🚀',
+            message: `No estará disponible del 23 al 24 de febrero, pero volverá mejor que nunca después de eso. Si necesitas ayuda con un viaje actual, por favor llama al +1 866-296-7768. ¡Gracias!`,
+        },
     },
     workspace: {
         common: {
@@ -3738,7 +3745,8 @@ const translations = {
             deleteFailureMessage: 'Se ha producido un error al intentar eliminar la categoría. Por favor, inténtalo más tarde.',
             categoryName: 'Nombre de la categoría',
             requiresCategory: 'Los miembros deben clasificar todos los gastos',
-            needCategoryForExportToIntegration: 'Se requiere una categoría en cada gasto para poder exportarlo a',
+            needCategoryForExportToIntegration: ({connectionName}: NeedCategoryForExportToIntegrationParams) =>
+                `Todos los gastos deben estar categorizados para poder exportar a ${connectionName}.`,
             subtitle: 'Obtén una visión general de dónde te gastas el dinero. Utiliza las categorías predeterminadas o añade las tuyas propias.',
             emptyCategories: {
                 title: 'No has creado ninguna categoría',
@@ -5203,13 +5211,10 @@ const translations = {
                 stripePaid: ({amount, currency}: StripePaidParams) => `pagado ${currency}${amount}`,
                 takeControl: `tomó el control`,
                 integrationSyncFailed: ({label, errorMessage}: IntegrationSyncFailedParams) => `no se pudo sincronizar con ${label}${errorMessage ? ` ("${errorMessage}")` : ''}`,
-                addEmployee: ({email, role}: AddEmployeeParams) => `agregó a ${email} como ${role === 'miembro' || role === 'user' ? 'miembro' : 'administrador'}`,
-                updateRole: ({email, currentRole, newRole}: UpdateRoleParams) =>
-                    `actualizó el rol ${email} a ${newRole === 'miembro' || newRole === 'user' ? 'miembro' : 'administrador'} (previamente ${
-                        currentRole === 'miembro' || currentRole === 'user' ? 'miembro' : 'administrador'
-                    })`,
+                addEmployee: ({email, role}: AddEmployeeParams) => `agregó a ${email} como ${role}`,
+                updateRole: ({email, currentRole, newRole}: UpdateRoleParams) => `actualizó el rol ${email} a ${newRole} (previamente ${currentRole})`,
                 leftWorkspace: ({nameOrEmail}: LeftWorkspaceParams) => `${nameOrEmail} salió del espacio de trabajo`,
-                removeMember: ({email, role}: AddEmployeeParams) => `eliminado ${role === 'miembro' || role === 'user' ? 'miembro' : 'administrador'} ${email}`,
+                removeMember: ({email, role}: AddEmployeeParams) => `eliminado ${role} ${email}`,
                 removedConnection: ({connectionName}: ConnectionNameParams) => `eliminó la conexión a ${CONST.POLICY.CONNECTIONS.NAME_USER_FRIENDLY[connectionName]}`,
             },
         },
