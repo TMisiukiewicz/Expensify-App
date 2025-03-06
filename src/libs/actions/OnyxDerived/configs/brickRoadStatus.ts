@@ -18,7 +18,7 @@ export default createOnyxDerivedValueConfig({
     key: ONYXKEYS.DERIVED.BRICK_ROAD_STATUS,
     dependencies: [ONYXKEYS.COLLECTION.REPORT, ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS],
     compute: ([reports, transactionViolations]) => {
-        if (!reports || !transactionViolations) {
+        if (!reports) {
             return {};
         }
 
