@@ -5,13 +5,13 @@ import type {LocaleContextProps} from '@components/LocaleContextProvider';
 import CONST from '@src/CONST';
 import type {TranslationPaths} from '@src/languages/types';
 import ONYXKEYS from '@src/ONYXKEYS';
-import type {Policy, ReimbursementAccount, Report, ReportActions} from '@src/types/onyx';
+import type {Policy, ReimbursementAccount, Report, ReportActions, ReportBrickRoadStatus} from '@src/types/onyx';
 import type {PolicyConnectionSyncProgress, Unit} from '@src/types/onyx/Policy';
 import {isConnectionInProgress} from './actions/connections';
 import {convertToDisplayString} from './CurrencyUtils';
 import {isPolicyAdmin, shouldShowCustomUnitsError, shouldShowEmployeeListError, shouldShowPolicyError, shouldShowSyncError, shouldShowTaxRateError} from './PolicyUtils';
 import {getOneTransactionThreadReportID} from './ReportActionsUtils';
-import {getAllReportErrors, hasReportViolations, isReportOwner, isUnread, isUnreadWithMention, requiresAttentionFromCurrentUser, shouldDisplayViolationsRBRInLHN} from './ReportUtils';
+import {hasReportViolations, isReportOwner, isUnread, isUnreadWithMention, requiresAttentionFromCurrentUser, shouldDisplayViolationsRBRInLHN} from './ReportUtils';
 
 type CheckingMethod = () => boolean;
 
@@ -47,13 +47,19 @@ Onyx.connect({
     },
 });
 
+let reportBrickRoadStatuses: OnyxEntry<ReportBrickRoadStatus>;
+Onyx.connect({
+    key: ONYXKEYS.DERIVED.BRICK_ROAD_STATUS,
+    callback: (value) => (reportBrickRoadStatuses = value),
+});
+
 /**
  * @param altReportActions Replaces (local) allReportActions used within (local) function getWorkspacesBrickRoads
  * @returns BrickRoad for the policy passed as a param and optionally actionsByReport (if passed)
  */
 const getBrickRoadForPolicy = (report: Report, altReportActions?: OnyxCollection<ReportActions>): BrickRoad => {
     const reportActions = (altReportActions ?? allReportActions)?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.reportID}`] ?? {};
-    const reportErrors = getAllReportErrors(report, reportActions);
+    const reportErrors = reportBrickRoadStatuses?.[report.reportID]?.errors ?? {};
     const oneTransactionThreadReportID = getOneTransactionThreadReportID(report.reportID, reportActions);
     const oneTransactionThreadReport = reportsCollection?.[`${ONYXKEYS.COLLECTION.REPORT}${oneTransactionThreadReportID}`];
     let doesReportContainErrors = Object.keys(reportErrors ?? {}).length !== 0 ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined;

@@ -718,7 +718,6 @@ type GetReportNameParams = {
     transactions?: SearchTransaction[];
     reports?: SearchReport[];
     draftReports?: OnyxCollection<Report>;
-    reportNameValuePairs?: OnyxCollection<ReportNameValuePairs>;
     policies?: SearchPolicy[];
 };
 
@@ -894,18 +893,6 @@ Onyx.connect({
     },
 });
 
-let allReportNameValuePair: OnyxCollection<ReportNameValuePairs>;
-Onyx.connect({
-    key: ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS,
-    waitForCollectionCallback: true,
-    callback: (value) => {
-        if (!value) {
-            return;
-        }
-        allReportNameValuePair = value;
-    },
-});
-
 let allReportsViolations: OnyxCollection<ReportViolations>;
 Onyx.connect({
     key: ONYXKEYS.COLLECTION.REPORT_VIOLATIONS,
@@ -1020,8 +1007,11 @@ function getReport(reportID: string, reports: SearchReport[] | OnyxCollection<Re
 /**
  * Returns the report
  */
-function getReportNameValuePairs(reportID?: string, reportNameValuePairs: OnyxCollection<ReportNameValuePairs> = allReportNameValuePair): OnyxEntry<ReportNameValuePairs> {
-    return reportNameValuePairs?.[`${ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS}${reportID}`];
+function getReportNameValuePairs(reportID?: string) {
+    if (!reportID) {
+        return {};
+    }
+    return reportBrickRoadStatuses?.[reportID]?.reportNameValuePairs;
 }
 
 /**
@@ -4394,7 +4384,6 @@ function getReportNameInternal({
     invoiceReceiverPolicy,
     transactions,
     reports,
-    reportNameValuePairs,
     policies,
 }: GetReportNameParams): string {
     const reportID = report?.reportID;
@@ -4454,7 +4443,7 @@ function getReportNameInternal({
     if (isChatThread(report)) {
         if (!isEmptyObject(parentReportAction) && isTransactionThread(parentReportAction)) {
             formattedName = getTransactionReportName({reportAction: parentReportAction, transactions, reports});
-            if (isArchivedNonExpenseReport(report, getReportNameValuePairs(report?.reportID, reportNameValuePairs))) {
+            if (isArchivedNonExpenseReport(report, getReportNameValuePairs(report?.reportID))) {
                 formattedName += ` (${translateLocal('common.archived')})`;
             }
             return formatReportLastMessageText(formattedName);
@@ -4489,7 +4478,7 @@ function getReportNameInternal({
         if (isAdminRoom(report) || isUserCreatedPolicyRoom(report)) {
             return getAdminRoomInvitedParticipants(parentReportAction, reportActionMessage);
         }
-        if (reportActionMessage && isArchivedNonExpenseReport(report, getReportNameValuePairs(report?.reportID, reportNameValuePairs))) {
+        if (reportActionMessage && isArchivedNonExpenseReport(report, getReportNameValuePairs(report?.reportID))) {
             return `${reportActionMessage} (${translateLocal('common.archived')})`;
         }
         if (!isEmptyObject(parentReportAction) && isModifiedExpenseAction(parentReportAction)) {
@@ -7121,8 +7110,7 @@ function getAllReportErrors(report: OnyxEntry<Report>, reportActions: OnyxEntry<
 }
 
 function hasReportErrorsOtherThanFailedReceipt(report: Report, doesReportHaveViolations: boolean) {
-    const reportActions = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.reportID}`] ?? {};
-    const allReportErrors = getAllReportErrors(report, reportActions) ?? {};
+    const allReportErrors = reportBrickRoadStatuses?.[report.reportID]?.errors ?? {};
     const transactionReportActions = getAllReportActions(report.reportID);
     const oneTransactionThreadReportID = getOneTransactionThreadReportID(report.reportID, transactionReportActions, undefined);
     let doesTransactionThreadReportHasViolations = false;

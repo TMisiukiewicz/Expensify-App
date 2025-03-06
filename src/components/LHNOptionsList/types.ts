@@ -77,9 +77,6 @@ type OptionRowLHNDataProps = {
     /** The reportID of the report */
     reportID: string;
 
-    /** Array of report actions for this report */
-    reportActions: OnyxEntry<ReportActions>;
-
     /**
      * Array of report actions for the IOU report related to the last action of this report.
      * If the last action is a report action preview, the last message of the report depends on

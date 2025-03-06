@@ -65,7 +65,6 @@ import {
     doesReportBelongToWorkspace,
     formatReportLastMessageText,
     getAllReportActionsErrorsAndReportActionThatRequiresAttention,
-    getAllReportErrors,
     getChatRoomSubtitle,
     getDisplayNameForParticipant,
     getDisplayNamesWithTooltips,
@@ -342,7 +341,7 @@ function getReasonAndReportActionThatHasRedBrickRoad(
     hasReportViolations: boolean,
 ): ReasonAndReportActionThatHasRedBrickRoad | null {
     const {reportAction} = getAllReportActionsErrorsAndReportActionThatRequiresAttention(report, reportActions);
-    const errors = getAllReportErrors(report, reportActions);
+    const errors = brickRoadStatus?.[report.reportID]?.errors ?? {};
     const hasErrors = Object.keys(errors).length !== 0;
 
     if (isArchivedReportWithID(report.reportID)) {
@@ -385,7 +384,6 @@ function getOptionData({
     report,
     oneTransactionThreadReport,
     reportNameValuePairs,
-    reportActions,
     personalDetails,
     preferredLocale,
     policy,
@@ -396,7 +394,6 @@ function getOptionData({
     report: OnyxEntry<Report>;
     oneTransactionThreadReport: OnyxEntry<Report>;
     reportNameValuePairs: OnyxEntry<ReportNameValuePairs>;
-    reportActions: OnyxEntry<ReportActions>;
     personalDetails: OnyxEntry<PersonalDetailsList>;
     preferredLocale: DeepValueOf<typeof CONST.LOCALES>;
     policy: OnyxEntry<Policy> | undefined;
@@ -414,7 +411,7 @@ function getOptionData({
     const result: OptionData = {
         text: '',
         alternateText: undefined,
-        allReportErrors: getAllReportErrors(report, reportActions),
+        allReportErrors: brickRoadStatus?.[report.reportID]?.errors,
         brickRoadIndicator: null,
         tooltipText: null,
         subtitle: undefined,

@@ -1,7 +1,9 @@
 import type {OnyxEntry} from 'react-native-onyx';
 import type {ValueOf} from 'type-fest';
 import type CONST from '@src/CONST';
+import type {Errors} from './OnyxCommon';
 import type ReportAction from './ReportAction';
+import type ReportNameValuePairs from './ReportNameValuePairs';
 
 /**
  *
@@ -43,6 +45,14 @@ type BrickRoadStatus = {
      *
      */
     reasonToHaveGBR: ReasonAndReportActionThatRequiresAttention | null;
+    /**
+     *
+     */
+    errors: Errors;
+    /**
+     *
+     */
+    reportNameValuePairs: OnyxEntry<ReportNameValuePairs>;
 };
 
 /**

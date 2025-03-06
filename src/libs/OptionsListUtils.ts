@@ -24,6 +24,7 @@ import type {
     Report,
     ReportAction,
     ReportActions,
+    ReportBrickRoadStatus,
 } from '@src/types/onyx';
 import type {Attendee, Participant} from '@src/types/onyx/IOU';
 import type * as OnyxCommon from '@src/types/onyx/OnyxCommon';
@@ -72,7 +73,6 @@ import {
 import {
     canUserPerformWriteAction,
     formatReportLastMessageText,
-    getAllReportErrors,
     getChatRoomSubtitle,
     getDeletedParentActionMessageForChatReport,
     getDisplayNameForParticipant,
@@ -416,6 +416,12 @@ Onyx.connect({
     callback: (value) => (nvpDismissedProductTraining = value),
 });
 
+let brickRoadStatus: OnyxEntry<ReportBrickRoadStatus>;
+Onyx.connect({
+    key: ONYXKEYS.DERIVED.BRICK_ROAD_STATUS,
+    callback: (value) => (brickRoadStatus = value),
+});
+
 /**
  * @param defaultValues {login: accountID} In workspace invite page, when new user is added we pass available data to opt in
  * @returns Returns avatar data for a list of user accountIDs
@@ -733,8 +739,11 @@ function getLastMessageTextForReport(report: OnyxEntry<Report>, lastActorDetails
     return lastMessageTextFromReport || (report?.lastMessageText ?? '');
 }
 
-function hasReportErrors(report: Report, reportActions: OnyxEntry<ReportActions>) {
-    return !isEmptyObject(getAllReportErrors(report, reportActions));
+function hasReportErrors(report: Report) {
+    if (!brickRoadStatus?.[report.reportID]) {
+        return false;
+    }
+    return !isEmptyObject(brickRoadStatus[report.reportID]?.errors);
 }
 
 /**
@@ -802,8 +811,8 @@ function createOption(
         result.shouldShowSubscript = shouldReportShowSubscript(report);
         result.isPolicyExpenseChat = reportUtilsIsPolicyExpenseChat(report);
         result.isOwnPolicyExpenseChat = report.isOwnPolicyExpenseChat ?? false;
-        result.allReportErrors = getAllReportErrors(report, reportActions);
-        result.brickRoadIndicator = hasReportErrors(report, reportActions) ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : '';
+        result.allReportErrors = brickRoadStatus?.[report.reportID]?.errors;
+        result.brickRoadIndicator = hasReportErrors(report) ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : '';
         result.pendingAction = report.pendingFields ? report.pendingFields.addWorkspaceRoom ?? report.pendingFields.createChat : undefined;
         result.ownerAccountID = report.ownerAccountID;
         result.reportID = report.reportID;
