@@ -53,11 +53,7 @@ Onyx.connect({
     callback: (value) => (reportBrickRoadStatuses = value),
 });
 
-/**
- * @param altReportActions Replaces (local) allReportActions used within (local) function getWorkspacesBrickRoads
- * @returns BrickRoad for the policy passed as a param and optionally actionsByReport (if passed)
- */
-const getBrickRoadForPolicy = (report: Report, altReportActions?: OnyxCollection<ReportActions>): BrickRoad => {
+const calculateBrickRoadForPolicy = (report: Report, altReportActions?: OnyxCollection<ReportActions>): BrickRoad => {
     const reportActions = (altReportActions ?? allReportActions)?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.reportID}`] ?? {};
     const reportErrors = reportBrickRoadStatuses?.[report.reportID]?.errors ?? {};
     const oneTransactionThreadReportID = getOneTransactionThreadReportID(report.reportID, reportActions);
@@ -86,6 +82,14 @@ const getBrickRoadForPolicy = (report: Report, altReportActions?: OnyxCollection
     const reportOption = {...report, isUnread: isUnread(report, oneTransactionThreadReport), isUnreadWithMention: isUnreadWithMention(report)};
     const shouldShowGreenDotIndicator = requiresAttentionFromCurrentUser(reportOption);
     return shouldShowGreenDotIndicator ? CONST.BRICK_ROAD_INDICATOR_STATUS.INFO : undefined;
+};
+
+/**
+ * @param altReportActions Replaces (local) allReportActions used within (local) function getWorkspacesBrickRoads
+ * @returns BrickRoad for the policy passed as a param and optionally actionsByReport (if passed)
+ */
+const getBrickRoadForPolicy = (report: Report): BrickRoad => {
+    return reportBrickRoadStatuses?.[report.reportID]?.policyBrickRoad;
 };
 
 function hasGlobalWorkspaceSettingsRBR(policies: OnyxCollection<Policy>, allConnectionProgresses: OnyxCollection<PolicyConnectionSyncProgress>) {
@@ -160,7 +164,7 @@ function getChatTabBrickRoad(policyID: string | undefined, orderedReportIDs: str
 /**
  * @returns a map where the keys are policyIDs and the values are BrickRoads for each policy
  */
-function getWorkspacesBrickRoads(reports: OnyxCollection<Report>, policies: OnyxCollection<Policy>, reportActions: OnyxCollection<ReportActions>): Record<string, BrickRoad> {
+function getWorkspacesBrickRoads(reports: OnyxCollection<Report>, policies: OnyxCollection<Policy>): Record<string, BrickRoad> {
     if (!reports) {
         return {};
     }
@@ -183,7 +187,7 @@ function getWorkspacesBrickRoads(reports: OnyxCollection<Report>, policies: Onyx
         if (!report || workspacesBrickRoadsMap[policyID] === CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR) {
             return;
         }
-        const workspaceBrickRoad = getBrickRoadForPolicy(report, reportActions);
+        const workspaceBrickRoad = getBrickRoadForPolicy(report);
 
         if (!workspaceBrickRoad && !!workspacesBrickRoadsMap[policyID]) {
             return;
@@ -316,5 +320,6 @@ export {
     getChatTabBrickRoad,
     getUnitTranslationKey,
     getOwnershipChecksDisplayText,
+    calculateBrickRoadForPolicy,
 };
 export type {BrickRoad};

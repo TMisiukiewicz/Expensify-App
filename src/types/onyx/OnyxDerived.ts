@@ -1,5 +1,6 @@
 import type {OnyxEntry} from 'react-native-onyx';
 import type {ValueOf} from 'type-fest';
+import type {BrickRoad} from '@libs/WorkspacesSettingsUtils';
 import type CONST from '@src/CONST';
 import type {Errors} from './OnyxCommon';
 import type ReportAction from './ReportAction';
@@ -52,11 +53,11 @@ type BrickRoadStatus = {
     /**
      *
      */
-    reportNameValuePairs: OnyxEntry<ReportNameValuePairs>;
+    canUserPerformWriteAction: boolean;
     /**
      *
      */
-    canUserPerformWriteAction: boolean;
+    policyBrickRoad: BrickRoad;
 };
 
 /**

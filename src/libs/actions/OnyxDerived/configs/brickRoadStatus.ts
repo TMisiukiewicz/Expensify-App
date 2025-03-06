@@ -1,5 +1,4 @@
 import Onyx from 'react-native-onyx';
-import type {OnyxCollection} from 'react-native-onyx';
 import {getReportAction} from '@libs/ReportActionsUtils';
 import {
     canUserWriteActionInReport,
@@ -11,6 +10,7 @@ import {
     isSettled,
 } from '@libs/ReportUtils';
 import SidebarUtils from '@libs/SidebarUtils';
+import {calculateBrickRoadForPolicy} from '@libs/WorkspacesSettingsUtils';
 import createOnyxDerivedValueConfig from '@userActions/OnyxDerived/createOnyxDerivedValueConfig';
 import ONYXKEYS from '@src/ONYXKEYS';
 import type * as OnyxTypes from '@src/types/onyx';
@@ -20,13 +20,6 @@ let reportActions: Record<string, OnyxTypes.ReportActions | undefined>;
 Onyx.connect({
     key: ONYXKEYS.COLLECTION.REPORT_ACTIONS,
     callback: (value) => (reportActions = value),
-    waitForCollectionCallback: true,
-});
-
-let reportNameValuePairs: OnyxCollection<OnyxTypes.ReportNameValuePairs>;
-Onyx.connect({
-    key: ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS,
-    callback: (value) => (reportNameValuePairs = value),
     waitForCollectionCallback: true,
 });
 
@@ -51,13 +44,14 @@ export default createOnyxDerivedValueConfig({
             const requiresAttentionFromCurrentUser = getReasonAndReportActionThatRequiresAttention(report, parentReportAction);
             const errors = getAllReportErrors(report, reportActionsList);
             const canPerformWriteAction = canUserWriteActionInReport(report);
+            const policyBrickRoad = calculateBrickRoadForPolicy(report, reportActionsList);
 
             acc[report.reportID] = {
                 reasonToHaveRBR: reasonAndReportActionWithRBR,
                 reasonToHaveGBR: requiresAttentionFromCurrentUser,
                 errors,
-                reportNameValuePairs: reportNameValuePairs?.[`${ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS}${report.reportID}`],
                 canUserPerformWriteAction: canPerformWriteAction ?? false,
+                policyBrickRoad,
             };
 
             return acc;

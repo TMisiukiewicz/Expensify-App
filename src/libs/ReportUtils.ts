@@ -719,6 +719,7 @@ type GetReportNameParams = {
     reports?: SearchReport[];
     draftReports?: OnyxCollection<Report>;
     policies?: SearchPolicy[];
+    reportNameValuePairs?: OnyxCollection<ReportNameValuePairs>;
 };
 
 type ReportByPolicyMap = Record<string, Report[]>;
@@ -893,6 +894,18 @@ Onyx.connect({
     },
 });
 
+let allReportNameValuePair: OnyxCollection<ReportNameValuePairs>;
+Onyx.connect({
+    key: ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS,
+    waitForCollectionCallback: true,
+    callback: (value) => {
+        if (!value) {
+            return;
+        }
+        allReportNameValuePair = value;
+    },
+});
+
 let allReportsViolations: OnyxCollection<ReportViolations>;
 Onyx.connect({
     key: ONYXKEYS.COLLECTION.REPORT_VIOLATIONS,
@@ -1007,11 +1020,8 @@ function getReport(reportID: string, reports: SearchReport[] | OnyxCollection<Re
 /**
  * Returns the report
  */
-function getReportNameValuePairs(reportID?: string) {
-    if (!reportID) {
-        return {};
-    }
-    return reportBrickRoadStatuses?.[reportID]?.reportNameValuePairs;
+function getReportNameValuePairs(reportID?: string, reportNameValuePairs: OnyxCollection<ReportNameValuePairs> = allReportNameValuePair): OnyxEntry<ReportNameValuePairs> {
+    return reportNameValuePairs?.[`${ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS}${reportID}`];
 }
 
 /**
@@ -4376,7 +4386,17 @@ function getSearchReportName(props: GetReportNameParams): string {
     return getReportNameInternal(props);
 }
 
-function getReportNameInternal({report, policy, parentReportActionParam, personalDetails, invoiceReceiverPolicy, transactions, reports, policies}: GetReportNameParams): string {
+function getReportNameInternal({
+    report,
+    policy,
+    parentReportActionParam,
+    personalDetails,
+    reportNameValuePairs,
+    invoiceReceiverPolicy,
+    transactions,
+    reports,
+    policies,
+}: GetReportNameParams): string {
     const reportID = report?.reportID;
     const cacheKey = getCacheKey(report);
 
@@ -4434,7 +4454,7 @@ function getReportNameInternal({report, policy, parentReportActionParam, persona
     if (isChatThread(report)) {
         if (!isEmptyObject(parentReportAction) && isTransactionThread(parentReportAction)) {
             formattedName = getTransactionReportName({reportAction: parentReportAction, transactions, reports});
-            if (isArchivedNonExpenseReport(report, getReportNameValuePairs(report?.reportID))) {
+            if (isArchivedNonExpenseReport(report, getReportNameValuePairs(report?.reportID, reportNameValuePairs))) {
                 formattedName += ` (${translateLocal('common.archived')})`;
             }
             return formatReportLastMessageText(formattedName);
