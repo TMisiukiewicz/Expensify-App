@@ -10,7 +10,6 @@ import {
     isSettled,
 } from '@libs/ReportUtils';
 import SidebarUtils from '@libs/SidebarUtils';
-import {calculateBrickRoadForPolicy} from '@libs/WorkspacesSettingsUtils';
 import createOnyxDerivedValueConfig from '@userActions/OnyxDerived/createOnyxDerivedValueConfig';
 import ONYXKEYS from '@src/ONYXKEYS';
 import type * as OnyxTypes from '@src/types/onyx';
@@ -44,14 +43,12 @@ export default createOnyxDerivedValueConfig({
             const requiresAttentionFromCurrentUser = getReasonAndReportActionThatRequiresAttention(report, parentReportAction);
             const errors = getAllReportErrors(report, reportActionsList);
             const canPerformWriteAction = canUserWriteActionInReport(report);
-            const policyBrickRoad = calculateBrickRoadForPolicy(report, reportActionsList);
 
             acc[report.reportID] = {
                 reasonToHaveRBR: reasonAndReportActionWithRBR,
                 reasonToHaveGBR: requiresAttentionFromCurrentUser,
                 errors,
                 canUserPerformWriteAction: canPerformWriteAction ?? false,
-                policyBrickRoad,
             };
 
             return acc;

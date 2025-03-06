@@ -11,7 +11,7 @@ import {isConnectionInProgress} from './actions/connections';
 import {convertToDisplayString} from './CurrencyUtils';
 import {isPolicyAdmin, shouldShowCustomUnitsError, shouldShowEmployeeListError, shouldShowPolicyError, shouldShowSyncError, shouldShowTaxRateError} from './PolicyUtils';
 import {getOneTransactionThreadReportID} from './ReportActionsUtils';
-import {hasReportViolations, isReportOwner, isUnread, isUnreadWithMention, requiresAttentionFromCurrentUser, shouldDisplayViolationsRBRInLHN} from './ReportUtils';
+import {isUnread} from './ReportUtils';
 
 type CheckingMethod = () => boolean;
 
@@ -23,18 +23,6 @@ Onyx.connect({
     key: ONYXKEYS.REIMBURSEMENT_ACCOUNT,
     callback: (val) => {
         reimbursementAccount = val;
-    },
-});
-
-let allReportActions: OnyxCollection<ReportActions>;
-Onyx.connect({
-    key: ONYXKEYS.COLLECTION.REPORT_ACTIONS,
-    waitForCollectionCallback: true,
-    callback: (actions) => {
-        if (!actions) {
-            return;
-        }
-        allReportActions = actions;
     },
 });
 
@@ -53,43 +41,20 @@ Onyx.connect({
     callback: (value) => (reportBrickRoadStatuses = value),
 });
 
-const calculateBrickRoadForPolicy = (report: Report, altReportActions?: OnyxCollection<ReportActions>): BrickRoad => {
-    const reportActions = (altReportActions ?? allReportActions)?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.reportID}`] ?? {};
-    const reportErrors = reportBrickRoadStatuses?.[report.reportID]?.errors ?? {};
-    const oneTransactionThreadReportID = getOneTransactionThreadReportID(report.reportID, reportActions);
-    const oneTransactionThreadReport = reportsCollection?.[`${ONYXKEYS.COLLECTION.REPORT}${oneTransactionThreadReportID}`];
-    let doesReportContainErrors = Object.keys(reportErrors ?? {}).length !== 0 ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined;
-
-    if (!doesReportContainErrors) {
-        const shouldDisplayViolations = shouldDisplayViolationsRBRInLHN(report);
-        const shouldDisplayReportViolations = isReportOwner(report) && hasReportViolations(report.reportID);
-        const hasViolations = shouldDisplayViolations || shouldDisplayReportViolations;
-        if (hasViolations) {
-            doesReportContainErrors = CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR;
-        }
-    }
-
-    if (oneTransactionThreadReportID && !doesReportContainErrors) {
-        if (shouldDisplayViolationsRBRInLHN(oneTransactionThreadReport)) {
-            doesReportContainErrors = CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR;
-        }
-    }
-
-    if (doesReportContainErrors) {
-        return CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR;
-    }
-
-    const reportOption = {...report, isUnread: isUnread(report, oneTransactionThreadReport), isUnreadWithMention: isUnreadWithMention(report)};
-    const shouldShowGreenDotIndicator = requiresAttentionFromCurrentUser(reportOption);
-    return shouldShowGreenDotIndicator ? CONST.BRICK_ROAD_INDICATOR_STATUS.INFO : undefined;
-};
-
 /**
  * @param altReportActions Replaces (local) allReportActions used within (local) function getWorkspacesBrickRoads
  * @returns BrickRoad for the policy passed as a param and optionally actionsByReport (if passed)
  */
 const getBrickRoadForPolicy = (report: Report): BrickRoad => {
-    return reportBrickRoadStatuses?.[report.reportID]?.policyBrickRoad;
+    if (reportBrickRoadStatuses?.[report.reportID]?.reasonToHaveRBR) {
+        return CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR;
+    }
+
+    if (reportBrickRoadStatuses?.[report.reportID]?.reasonToHaveGBR) {
+        return CONST.BRICK_ROAD_INDICATOR_STATUS.INFO;
+    }
+
+    return undefined;
 };
 
 function hasGlobalWorkspaceSettingsRBR(policies: OnyxCollection<Policy>, allConnectionProgresses: OnyxCollection<PolicyConnectionSyncProgress>) {
@@ -320,6 +285,5 @@ export {
     getChatTabBrickRoad,
     getUnitTranslationKey,
     getOwnershipChecksDisplayText,
-    calculateBrickRoadForPolicy,
 };
 export type {BrickRoad};
