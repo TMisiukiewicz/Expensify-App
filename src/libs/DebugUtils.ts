@@ -8,10 +8,9 @@ import type {TupleToUnion} from 'type-fest';
 import CONST from '@src/CONST';
 import type {TranslationPaths} from '@src/languages/types';
 import ONYXKEYS from '@src/ONYXKEYS';
-import type {Beta, Policy, Report, ReportAction, ReportActions, ReportNameValuePairs, Transaction, TransactionViolation} from '@src/types/onyx';
+import type {Beta, Policy, Report, ReportAction, ReportActions, ReportBrickRoadStatus, ReportNameValuePairs, Transaction, TransactionViolation} from '@src/types/onyx';
 import {getLinkedTransactionID} from './ReportActionsUtils';
-import {getReasonAndReportActionThatRequiresAttention, reasonForReportToBeInOptionList, shouldDisplayViolationsRBRInLHN} from './ReportUtils';
-import SidebarUtils from './SidebarUtils';
+import {reasonForReportToBeInOptionList, shouldDisplayViolationsRBRInLHN} from './ReportUtils';
 import {getTransactionID as TransactionUtilsGetTransactionID} from './TransactionUtils';
 
 class NumberError extends SyntaxError {
@@ -101,20 +100,19 @@ Onyx.connect({
     },
 });
 
-let transactionViolations: OnyxCollection<TransactionViolation[]>;
-Onyx.connect({
-    key: ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS,
-    waitForCollectionCallback: true,
-    callback: (value) => {
-        transactionViolations = value;
-    },
-});
-
 let betas: OnyxEntry<Beta[]>;
 Onyx.connect({
     key: ONYXKEYS.BETAS,
     callback: (value) => {
         betas = value;
+    },
+});
+
+let brickRoadStatus: OnyxEntry<ReportBrickRoadStatus>;
+Onyx.connect({
+    key: ONYXKEYS.DERIVED.BRICK_ROAD_STATUS,
+    callback: (value) => {
+        brickRoadStatus = value;
     },
 });
 
@@ -1303,7 +1301,7 @@ function getReasonForShowingRowInLHN(report: OnyxEntry<Report>, hasRBR = false):
         return null;
     }
 
-    const doesReportHaveViolations = shouldDisplayViolationsRBRInLHN(report, transactionViolations);
+    const doesReportHaveViolations = shouldDisplayViolationsRBRInLHN(report);
 
     const reason = reasonForReportToBeInOptionList({
         report,
@@ -1339,11 +1337,11 @@ type GBRReasonAndReportAction = {
  * Gets the reason and report action that is causing the GBR to show up in LHN row
  */
 function getReasonAndReportActionForGBRInLHNRow(report: OnyxEntry<Report>): GBRReasonAndReportAction | null {
-    if (!report) {
+    if (!report || !brickRoadStatus) {
         return null;
     }
 
-    const {reason, reportAction} = getReasonAndReportActionThatRequiresAttention(report) ?? {};
+    const {reason, reportAction} = brickRoadStatus[report.reportID]?.reasonToHaveGBR ?? {};
 
     if (reason) {
         return {reason: `debug.reasonGBR.${reason}`, reportAction};
@@ -1360,8 +1358,12 @@ type RBRReasonAndReportAction = {
 /**
  * Gets the report action that is causing the RBR to show up in LHN
  */
-function getReasonAndReportActionForRBRInLHNRow(report: Report, reportActions: OnyxEntry<ReportActions>, hasViolations: boolean): RBRReasonAndReportAction | null {
-    const {reason, reportAction} = SidebarUtils.getReasonAndReportActionThatHasRedBrickRoad(report, reportActions, hasViolations, transactionViolations) ?? {};
+function getReasonAndReportActionForRBRInLHNRow(report: Report): RBRReasonAndReportAction | null {
+    if (!brickRoadStatus) {
+        return null;
+    }
+
+    const {reason, reportAction} = brickRoadStatus[report.reportID]?.reasonToHaveRBR ?? {};
 
     if (reason) {
         return {reason: `debug.reasonRBR.${reason}`, reportAction};

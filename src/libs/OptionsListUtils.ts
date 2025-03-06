@@ -24,7 +24,6 @@ import type {
     Report,
     ReportAction,
     ReportActions,
-    TransactionViolation,
 } from '@src/types/onyx';
 import type {Attendee, Participant} from '@src/types/onyx/IOU';
 import type * as OnyxCommon from '@src/types/onyx/OnyxCommon';
@@ -180,7 +179,6 @@ type Section = SectionBase & {
 
 type GetValidOptionsSharedConfig = {
     includeP2P?: boolean;
-    transactionViolations?: OnyxCollection<TransactionViolation[]>;
     action?: IOUAction;
     shouldBoldTitleByDefault?: boolean;
     selectedOptions?: Option[];
@@ -1289,7 +1287,6 @@ function getValidReports(reports: OptionList['reports'], config: GetValidReports
         includeTasks = false,
         includeMoneyRequests = false,
         includeReadOnly = true,
-        transactionViolations = {},
         includeSelfDM = false,
         includeInvoiceRooms = false,
         action,
@@ -1312,7 +1309,7 @@ function getValidReports(reports: OptionList['reports'], config: GetValidReports
         // eslint-disable-next-line rulesdir/prefer-at
         const option = reports[i];
         const report = option.item;
-        const doesReportHaveViolations = shouldDisplayViolationsRBRInLHN(report, transactionViolations);
+        const doesReportHaveViolations = shouldDisplayViolationsRBRInLHN(report);
 
         const shouldBeInOptionList = shouldReportBeInOptionList({
             report,

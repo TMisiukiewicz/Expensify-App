@@ -5,7 +5,7 @@ import type {LocaleContextProps} from '@components/LocaleContextProvider';
 import CONST from '@src/CONST';
 import type {TranslationPaths} from '@src/languages/types';
 import ONYXKEYS from '@src/ONYXKEYS';
-import type {Policy, ReimbursementAccount, Report, ReportAction, ReportActions, TransactionViolations} from '@src/types/onyx';
+import type {Policy, ReimbursementAccount, Report, ReportActions} from '@src/types/onyx';
 import type {PolicyConnectionSyncProgress, Unit} from '@src/types/onyx/Policy';
 import {isConnectionInProgress} from './actions/connections';
 import {convertToDisplayString} from './CurrencyUtils';
@@ -47,20 +47,6 @@ Onyx.connect({
     },
 });
 
-let allTransactionViolations: NonNullable<OnyxCollection<TransactionViolations>> = {};
-Onyx.connect({
-    key: ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS,
-    waitForCollectionCallback: true,
-    callback: (value) => {
-        if (!value) {
-            allTransactionViolations = {};
-            return;
-        }
-
-        allTransactionViolations = value;
-    },
-});
-
 /**
  * @param altReportActions Replaces (local) allReportActions used within (local) function getWorkspacesBrickRoads
  * @returns BrickRoad for the policy passed as a param and optionally actionsByReport (if passed)
@@ -73,7 +59,7 @@ const getBrickRoadForPolicy = (report: Report, altReportActions?: OnyxCollection
     let doesReportContainErrors = Object.keys(reportErrors ?? {}).length !== 0 ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined;
 
     if (!doesReportContainErrors) {
-        const shouldDisplayViolations = shouldDisplayViolationsRBRInLHN(report, allTransactionViolations);
+        const shouldDisplayViolations = shouldDisplayViolationsRBRInLHN(report);
         const shouldDisplayReportViolations = isReportOwner(report) && hasReportViolations(report.reportID);
         const hasViolations = shouldDisplayViolations || shouldDisplayReportViolations;
         if (hasViolations) {
@@ -82,7 +68,7 @@ const getBrickRoadForPolicy = (report: Report, altReportActions?: OnyxCollection
     }
 
     if (oneTransactionThreadReportID && !doesReportContainErrors) {
-        if (shouldDisplayViolationsRBRInLHN(oneTransactionThreadReport, allTransactionViolations)) {
+        if (shouldDisplayViolationsRBRInLHN(oneTransactionThreadReport)) {
             doesReportContainErrors = CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR;
         }
     }
@@ -91,14 +77,8 @@ const getBrickRoadForPolicy = (report: Report, altReportActions?: OnyxCollection
         return CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR;
     }
 
-    // To determine if the report requires attention from the current user, we need to load the parent report action
-    let itemParentReportAction: OnyxEntry<ReportAction>;
-    if (report.parentReportID) {
-        const itemParentReportActions = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.parentReportID}`] ?? {};
-        itemParentReportAction = report.parentReportActionID ? itemParentReportActions[report.parentReportActionID] : undefined;
-    }
     const reportOption = {...report, isUnread: isUnread(report, oneTransactionThreadReport), isUnreadWithMention: isUnreadWithMention(report)};
-    const shouldShowGreenDotIndicator = requiresAttentionFromCurrentUser(reportOption, itemParentReportAction);
+    const shouldShowGreenDotIndicator = requiresAttentionFromCurrentUser(reportOption);
     return shouldShowGreenDotIndicator ? CONST.BRICK_ROAD_INDICATOR_STATUS.INFO : undefined;
 };
 

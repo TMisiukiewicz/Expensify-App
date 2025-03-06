@@ -5,7 +5,7 @@ import type {OnyxCollection, OnyxEntry} from 'react-native-onyx';
 import type {ValueOf} from 'type-fest';
 import type CONST from '@src/CONST';
 import type {OptionData} from '@src/libs/ReportUtils';
-import type {Locale, PersonalDetailsList, Policy, Report, ReportAction, ReportActions, ReportNameValuePairs, Transaction, TransactionViolation} from '@src/types/onyx';
+import type {Locale, PersonalDetailsList, Policy, Report, ReportAction, ReportActions, ReportNameValuePairs, Transaction} from '@src/types/onyx';
 
 type OptionMode = ValueOf<typeof CONST.OPTION_MODE>;
 
@@ -87,9 +87,6 @@ type OptionRowLHNDataProps = {
      * Changes in the IOU report report actions will affect the last message of this report.
      */
     iouReportReportActions: OnyxEntry<ReportActions>;
-
-    /** List of transaction violation */
-    transactionViolations: OnyxCollection<TransactionViolation[]>;
 
     /** Toggle between compact and default view */
     viewMode?: OptionMode;

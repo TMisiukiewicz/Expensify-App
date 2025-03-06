@@ -1,12 +1,12 @@
 import {Str} from 'expensify-common';
 import type {OnyxCollection, OnyxEntry} from 'react-native-onyx';
 import Onyx from 'react-native-onyx';
-import type {ValueOf} from 'type-fest';
 import type {PolicySelector} from '@hooks/useReportIDs';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
-import type {PersonalDetails, PersonalDetailsList, ReportActions, ReportNameValuePairs, TransactionViolation} from '@src/types/onyx';
+import type {PersonalDetails, PersonalDetailsList, ReportActions, ReportNameValuePairs} from '@src/types/onyx';
 import type Beta from '@src/types/onyx/Beta';
+import type {ReasonAndReportActionThatHasRedBrickRoad, ReportBrickRoadStatus} from '@src/types/onyx/OnyxDerived';
 import type Policy from '@src/types/onyx/Policy';
 import type PriorityMode from '@src/types/onyx/PriorityMode';
 import type Report from '@src/types/onyx/Report';
@@ -159,6 +159,14 @@ Onyx.connect({
     },
 });
 
+let brickRoadStatus: OnyxEntry<ReportBrickRoadStatus>;
+Onyx.connect({
+    key: ONYXKEYS.DERIVED.BRICK_ROAD_STATUS,
+    callback: (value) => {
+        brickRoadStatus = value;
+    },
+});
+
 function compareStringDates(a: string, b: string): 0 | 1 | -1 {
     if (a < b) {
         return -1;
@@ -192,7 +200,6 @@ function getOrderedReportIDs(
     betas: OnyxEntry<Beta[]>,
     policies: OnyxCollection<PolicySelector>,
     priorityMode: OnyxEntry<PriorityMode>,
-    transactionViolations: OnyxCollection<TransactionViolation[]>,
     currentPolicyID = '',
     policyMemberAccountIDs: number[] = [],
 ): string[] {
@@ -213,10 +220,10 @@ function getOrderedReportIDs(
             return;
         }
         const parentReportAction = getReportAction(report?.parentReportID, report?.parentReportActionID);
-        const doesReportHaveViolations = shouldDisplayViolationsRBRInLHN(report, transactionViolations);
+        const doesReportHaveViolations = shouldDisplayViolationsRBRInLHN(report);
         const isHidden = isHiddenForCurrentUser(report);
         const isFocused = report.reportID === currentReportId;
-        const hasErrorsOtherThanFailedReceipt = hasReportErrorsOtherThanFailedReceipt(report, doesReportHaveViolations, transactionViolations);
+        const hasErrorsOtherThanFailedReceipt = hasReportErrorsOtherThanFailedReceipt(report, doesReportHaveViolations);
         const isReportInAccessible = report?.errorFields?.notFound;
         if (isOneTransactionThread(report.reportID, report.parentReportID, parentReportAction)) {
             return;
@@ -236,7 +243,7 @@ function getOrderedReportIDs(
             isSystemChat ||
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             report.isPinned ||
-            requiresAttentionFromCurrentUser(report, parentReportAction);
+            requiresAttentionFromCurrentUser(report);
         if (isHidden && !shouldOverrideHidden) {
             return;
         }
@@ -284,9 +291,8 @@ function getOrderedReportIDs(
         };
 
         const isPinned = report?.isPinned ?? false;
-        const reportAction = getReportAction(report?.parentReportID, report?.parentReportActionID);
         const reportNameValuePairs = getReportNameValuePairs(report?.reportID);
-        if (isPinned || requiresAttentionFromCurrentUser(report, reportAction)) {
+        if (isPinned || requiresAttentionFromCurrentUser(report)) {
             pinnedAndGBRReports.push(miniReport);
         } else if (report?.hasErrorsOtherThanFailedReceipt) {
             errorReports.push(miniReport);
@@ -329,16 +335,11 @@ function getOrderedReportIDs(
     return LHNReports;
 }
 
-type ReasonAndReportActionThatHasRedBrickRoad = {
-    reason: ValueOf<typeof CONST.RBR_REASONS>;
-    reportAction?: OnyxEntry<ReportAction>;
-};
-
 function getReasonAndReportActionThatHasRedBrickRoad(
     report: Report,
     reportActions: OnyxEntry<ReportActions>,
-    hasViolations: boolean,
-    transactionViolations?: OnyxCollection<TransactionViolation[]>,
+    hasTransactionViolations: boolean,
+    hasReportViolations: boolean,
 ): ReasonAndReportActionThatHasRedBrickRoad | null {
     const {reportAction} = getAllReportActionsErrorsAndReportActionThatRequiresAttention(report, reportActions);
     const errors = getAllReportErrors(report, reportActions);
@@ -348,7 +349,7 @@ function getReasonAndReportActionThatHasRedBrickRoad(
         return null;
     }
 
-    if (shouldDisplayViolationsRBRInLHN(report, transactionViolations)) {
+    if (hasTransactionViolations) {
         return {
             reason: CONST.RBR_REASONS.HAS_TRANSACTION_THREAD_VIOLATIONS,
         };
@@ -361,7 +362,7 @@ function getReasonAndReportActionThatHasRedBrickRoad(
         };
     }
 
-    if (hasViolations) {
+    if (hasReportViolations) {
         return {
             reason: CONST.RBR_REASONS.HAS_VIOLATIONS,
         };
@@ -370,8 +371,11 @@ function getReasonAndReportActionThatHasRedBrickRoad(
     return null;
 }
 
-function shouldShowRedBrickRoad(report: Report, reportActions: OnyxEntry<ReportActions>, hasViolations: boolean, transactionViolations?: OnyxCollection<TransactionViolation[]>) {
-    return !!getReasonAndReportActionThatHasRedBrickRoad(report, reportActions, hasViolations, transactionViolations);
+function shouldShowRedBrickRoad(report: Report) {
+    if (!brickRoadStatus) {
+        return false;
+    }
+    return !!brickRoadStatus[report.reportID]?.reasonToHaveRBR;
 }
 
 /**
@@ -386,9 +390,7 @@ function getOptionData({
     preferredLocale,
     policy,
     parentReportAction,
-    hasViolations,
     lastMessageTextFromReport: lastMessageTextFromReportProp,
-    transactionViolations,
     invoiceReceiverPolicy,
 }: {
     report: OnyxEntry<Report>;
@@ -399,10 +401,8 @@ function getOptionData({
     preferredLocale: DeepValueOf<typeof CONST.LOCALES>;
     policy: OnyxEntry<Policy> | undefined;
     parentReportAction: OnyxEntry<ReportAction> | undefined;
-    hasViolations: boolean;
     lastMessageTextFromReport?: string;
     invoiceReceiverPolicy?: OnyxEntry<Policy>;
-    transactionViolations?: OnyxCollection<TransactionViolation[]>;
 }): OptionData | undefined {
     // When a user signs out, Onyx is cleared. Due to the lazy rendering with a virtual list, it's possible for
     // this method to be called after the Onyx data has been cleared out. In that case, it's fine to do
@@ -461,7 +461,7 @@ function getOptionData({
     result.isMoneyRequestReport = isMoneyRequestReport(report);
     result.shouldShowSubscript = shouldReportShowSubscript(report);
     result.pendingAction = report.pendingFields?.addWorkspaceRoom ?? report.pendingFields?.createChat;
-    result.brickRoadIndicator = shouldShowRedBrickRoad(report, reportActions, hasViolations, transactionViolations) ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : '';
+    result.brickRoadIndicator = shouldShowRedBrickRoad(report) ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : '';
     result.ownerAccountID = report.ownerAccountID;
     result.managerID = report.managerID;
     result.reportID = report.reportID;

@@ -764,6 +764,7 @@ const ONYXKEYS = {
     },
     DERIVED: {
         CONCIERGE_CHAT_REPORT_ID: 'conciergeChatReportID',
+        BRICK_ROAD_STATUS: 'brickRoadStatus',
     },
 } as const;
 
@@ -1089,6 +1090,7 @@ type OnyxValuesMapping = {
 
 type OnyxDerivedValuesMapping = {
     [ONYXKEYS.DERIVED.CONCIERGE_CHAT_REPORT_ID]: string | undefined;
+    [ONYXKEYS.DERIVED.BRICK_ROAD_STATUS]: OnyxTypes.ReportBrickRoadStatus;
 };
 
 type OnyxValues = OnyxValuesMapping & OnyxCollectionValuesMapping & OnyxFormValuesMapping & OnyxFormDraftValuesMapping & OnyxDerivedValuesMapping;

@@ -48,6 +48,7 @@ import type {SelectedParticipant} from '@src/types/onyx/NewGroupChatDraft';
 import type {OriginalMessageExportedToIntegration} from '@src/types/onyx/OldDotAction';
 import type Onboarding from '@src/types/onyx/Onboarding';
 import type {ErrorFields, Errors, Icon, PendingAction} from '@src/types/onyx/OnyxCommon';
+import type {ReasonAndReportActionThatRequiresAttention, ReportBrickRoadStatus} from '@src/types/onyx/OnyxDerived';
 import type {OriginalMessageChangeLog, PaymentMethodType} from '@src/types/onyx/OriginalMessage';
 import type {Status} from '@src/types/onyx/PersonalDetails';
 import type {ConnectionName} from '@src/types/onyx/Policy';
@@ -935,6 +936,17 @@ let activePolicyID: OnyxEntry<string>;
 Onyx.connect({
     key: ONYXKEYS.NVP_ACTIVE_POLICY_ID,
     callback: (value) => (activePolicyID = value),
+});
+
+let reportBrickRoadStatuses: OnyxEntry<ReportBrickRoadStatus>;
+Onyx.connect({
+    key: ONYXKEYS.DERIVED.BRICK_ROAD_STATUS,
+    callback: (value) => {
+        if (!value) {
+            return;
+        }
+        reportBrickRoadStatuses = value;
+    },
 });
 
 function getCurrentUserAvatar(): AvatarSource | undefined {
@@ -3094,11 +3106,6 @@ function isUnreadWithMention(reportOrOption: OnyxEntry<Report> | OptionData): bo
     return !!('isUnreadWithMention' in reportOrOption && reportOrOption.isUnreadWithMention) || lastReadTime < lastMentionedTime;
 }
 
-type ReasonAndReportActionThatRequiresAttention = {
-    reason: ValueOf<typeof CONST.REQUIRES_ATTENTION_REASONS>;
-    reportAction?: OnyxEntry<ReportAction>;
-};
-
 function getReasonAndReportActionThatRequiresAttention(
     optionOrReport: OnyxEntry<Report> | OptionData,
     parentReportAction?: OnyxEntry<ReportAction>,
@@ -3182,8 +3189,11 @@ function getReasonAndReportActionThatRequiresAttention(
  * @param option (report or optionItem)
  * @param parentReportAction (the report action the current report is a thread of)
  */
-function requiresAttentionFromCurrentUser(optionOrReport: OnyxEntry<Report> | OptionData, parentReportAction?: OnyxEntry<ReportAction>) {
-    return !!getReasonAndReportActionThatRequiresAttention(optionOrReport, parentReportAction);
+function requiresAttentionFromCurrentUser(optionOrReport: OnyxEntry<Report> | OptionData) {
+    if (!optionOrReport || !reportBrickRoadStatuses?.[optionOrReport.reportID]) {
+        return false;
+    }
+    return !!reportBrickRoadStatuses[optionOrReport.reportID].reasonToHaveGBR;
 }
 
 /**
@@ -6952,9 +6962,9 @@ function shouldHideReport(report: OnyxEntry<Report>, currentReportId: string | u
 }
 
 /**
- * Should we display a RBR on the LHN on this report due to violations?
+ * Does the report have any violations to display in the LHN?
  */
-function shouldDisplayViolationsRBRInLHN(report: OnyxEntry<Report>, transactionViolations: OnyxCollection<TransactionViolation[]>): boolean {
+function hasAnyTransactionViolations(report: OnyxEntry<Report>, transactionViolations: OnyxCollection<TransactionViolation[]>): boolean {
     // We only show the RBR in the highest level, which is the workspace chat
     if (!report || !isPolicyExpenseChat(report)) {
         return false;
@@ -6973,6 +6983,16 @@ function shouldDisplayViolationsRBRInLHN(report: OnyxEntry<Report>, transactionV
     return potentialReports.some((potentialReport) => {
         return hasViolations(potentialReport.reportID, transactionViolations) || hasWarningTypeViolations(potentialReport.reportID, transactionViolations);
     });
+}
+
+/**
+ * Should we display a RBR on the LHN on this report due to violations?
+ */
+function shouldDisplayViolationsRBRInLHN(report: OnyxEntry<Report>): boolean {
+    if (!report || !reportBrickRoadStatuses?.[report.reportID]) {
+        return false;
+    }
+    return !!reportBrickRoadStatuses[report.reportID].reasonToHaveRBR;
 }
 
 /**
@@ -7100,7 +7120,7 @@ function getAllReportErrors(report: OnyxEntry<Report>, reportActions: OnyxEntry<
     return allReportErrors;
 }
 
-function hasReportErrorsOtherThanFailedReceipt(report: Report, doesReportHaveViolations: boolean, transactionViolations: OnyxCollection<TransactionViolation[]>) {
+function hasReportErrorsOtherThanFailedReceipt(report: Report, doesReportHaveViolations: boolean) {
     const reportActions = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.reportID}`] ?? {};
     const allReportErrors = getAllReportErrors(report, reportActions) ?? {};
     const transactionReportActions = getAllReportActions(report.reportID);
@@ -7108,7 +7128,7 @@ function hasReportErrorsOtherThanFailedReceipt(report: Report, doesReportHaveVio
     let doesTransactionThreadReportHasViolations = false;
     if (oneTransactionThreadReportID) {
         const transactionReport = getReport(oneTransactionThreadReportID, allReports);
-        doesTransactionThreadReportHasViolations = !!transactionReport && shouldDisplayViolationsRBRInLHN(transactionReport, transactionViolations);
+        doesTransactionThreadReportHasViolations = !!transactionReport && shouldDisplayViolationsRBRInLHN(transactionReport);
     }
     return (
         doesTransactionThreadReportHasViolations ||
@@ -9552,6 +9572,7 @@ export {
     isHiddenForCurrentUser,
     prepareOnboardingOnyxData,
     getReportSubtitlePrefix,
+    hasAnyTransactionViolations,
 };
 
 export type {
