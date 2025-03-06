@@ -4376,16 +4376,7 @@ function getSearchReportName(props: GetReportNameParams): string {
     return getReportNameInternal(props);
 }
 
-function getReportNameInternal({
-    report,
-    policy,
-    parentReportActionParam,
-    personalDetails,
-    invoiceReceiverPolicy,
-    transactions,
-    reports,
-    policies,
-}: GetReportNameParams): string {
+function getReportNameInternal({report, policy, parentReportActionParam, personalDetails, invoiceReceiverPolicy, transactions, reports, policies}: GetReportNameParams): string {
     const reportID = report?.reportID;
     const cacheKey = getCacheKey(report);
 
@@ -7881,7 +7872,7 @@ function isMoneyRequestReportPendingDeletion(reportOrID: OnyxEntry<Report> | str
     return parentReportAction?.pendingAction === CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE;
 }
 
-function canUserPerformWriteAction(report: OnyxEntry<Report>) {
+function canUserWriteActionInReport(report: OnyxEntry<Report>) {
     const reportErrors = getAddWorkspaceRoomOrChatReportErrors(report);
 
     // If the expense report is marked for deletion, let us prevent any further write action.
@@ -7891,6 +7882,14 @@ function canUserPerformWriteAction(report: OnyxEntry<Report>) {
 
     const reportNameValuePairs = getReportNameValuePairs(report?.reportID);
     return !isArchivedNonExpenseReport(report, reportNameValuePairs) && isEmptyObject(reportErrors) && report && isAllowedToComment(report) && !isAnonymousUser && canWriteInReport(report);
+}
+
+function canUserPerformWriteAction(report: OnyxEntry<Report>) {
+    if (!report) {
+        return false;
+    }
+
+    return reportBrickRoadStatuses?.[report?.reportID]?.canUserPerformWriteAction;
 }
 
 /**
@@ -9561,6 +9560,7 @@ export {
     prepareOnboardingOnyxData,
     getReportSubtitlePrefix,
     hasAnyTransactionViolations,
+    canUserWriteActionInReport,
 };
 
 export type {

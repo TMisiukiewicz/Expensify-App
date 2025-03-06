@@ -53,6 +53,10 @@ type BrickRoadStatus = {
      *
      */
     reportNameValuePairs: OnyxEntry<ReportNameValuePairs>;
+    /**
+     *
+     */
+    canUserPerformWriteAction: boolean;
 };
 
 /**

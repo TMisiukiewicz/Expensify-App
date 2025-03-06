@@ -1,7 +1,15 @@
 import Onyx from 'react-native-onyx';
 import type {OnyxCollection} from 'react-native-onyx';
 import {getReportAction} from '@libs/ReportActionsUtils';
-import {getAllReportErrors, getReasonAndReportActionThatRequiresAttention, hasAnyTransactionViolations, hasReportViolations, isReportOwner, isSettled} from '@libs/ReportUtils';
+import {
+    canUserWriteActionInReport,
+    getAllReportErrors,
+    getReasonAndReportActionThatRequiresAttention,
+    hasAnyTransactionViolations,
+    hasReportViolations,
+    isReportOwner,
+    isSettled,
+} from '@libs/ReportUtils';
 import SidebarUtils from '@libs/SidebarUtils';
 import createOnyxDerivedValueConfig from '@userActions/OnyxDerived/createOnyxDerivedValueConfig';
 import ONYXKEYS from '@src/ONYXKEYS';
@@ -42,12 +50,14 @@ export default createOnyxDerivedValueConfig({
             const parentReportAction = getReportAction(report?.parentReportID, report?.parentReportActionID);
             const requiresAttentionFromCurrentUser = getReasonAndReportActionThatRequiresAttention(report, parentReportAction);
             const errors = getAllReportErrors(report, reportActionsList);
+            const canPerformWriteAction = canUserWriteActionInReport(report);
 
             acc[report.reportID] = {
                 reasonToHaveRBR: reasonAndReportActionWithRBR,
                 reasonToHaveGBR: requiresAttentionFromCurrentUser,
                 errors,
                 reportNameValuePairs: reportNameValuePairs?.[`${ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS}${report.reportID}`],
+                canUserPerformWriteAction: canPerformWriteAction ?? false,
             };
 
             return acc;
