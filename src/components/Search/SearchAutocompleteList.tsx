@@ -148,12 +148,17 @@ function SearchAutocompleteList(
     const taxRates = getAllTaxRates();
 
     const {options, areOptionsInitialized} = useOptionsList();
-    const searchOptions = useMemo(() => {
+    const [searchOptions, setSearchOptions] = useState<ReturnType<typeof getSearchOptions>>(defaultListOptions);
+
+    useEffect(() => {
         if (!areOptionsInitialized) {
-            return defaultListOptions;
+            return;
         }
-        return getSearchOptions(options, betas ?? []);
-    }, [areOptionsInitialized, betas, options]);
+        const newOptions = getSearchOptions(options, betas ?? []);
+        setSearchOptions(newOptions);
+        // if areOptionsInitialized is true it means options are already there, so don't do updates of the entire search options when options change
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [areOptionsInitialized, betas]);
 
     const [isInitialRender, setIsInitialRender] = useState(true);
 
