@@ -1,7 +1,7 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
 import {useOnyx} from 'react-native-onyx';
 import usePrevious from '@hooks/usePrevious';
-import {createOptionFromReport, createOptionList} from '@libs/OptionsListUtils';
+import {createOptionFromReport, createOptionList, processReport} from '@libs/OptionsListUtils';
 import type {OptionList, SearchOption} from '@libs/OptionsListUtils';
 import {isSelfDM} from '@libs/ReportUtils';
 import ONYXKEYS from '@src/ONYXKEYS';
@@ -47,7 +47,7 @@ function OptionsListContextProvider({children}: OptionsListProviderProps) {
         personalDetails: [],
     });
     const [preferredLocale] = useOnyx(ONYXKEYS.NVP_PREFERRED_LOCALE);
-    const [reports] = useOnyx(ONYXKEYS.COLLECTION.REPORT);
+    const [reports, {sourceValue: changedReports}] = useOnyx(ONYXKEYS.COLLECTION.REPORT);
 
     const personalDetails = usePersonalDetails();
     const prevPersonalDetails = usePrevious(personalDetails);
@@ -56,24 +56,47 @@ function OptionsListContextProvider({children}: OptionsListProviderProps) {
      * This effect is used to update the options list when reports change.
      */
     useEffect(() => {
-        // there is no need to update the options if the options are not initialized
-        if (!areOptionsInitialized.current || !reports) {
+        // there is no need to update the options if the options are not initialized or no reports changed
+        if (!areOptionsInitialized.current || !changedReports) {
             return;
         }
-        // Since reports updates can happen in bulk, and some reports depend on other reports, we need to recreate the whole list from scratch.
-        const newReports = createOptionList(personalDetails, reports).reports;
 
         setOptions((prevOptions) => {
-            const newOptions = {
+            // Get all the changed report entries
+            const changedReportEntries = Object.entries(changedReports);
+            if (changedReportEntries.length === 0) {
+                return prevOptions;
+            }
+
+            // Create a new map from the existing reports for modification
+            const updatedReportsMap = new Map(prevOptions.reports.map((report) => [report.reportID, report]));
+
+            // Process each changed report
+            changedReportEntries.forEach(([reportID, report]) => {
+                // If report was deleted, remove it from our map
+                if (!report) {
+                    updatedReportsMap.delete(reportID);
+                    return;
+                }
+
+                // Process the changed report
+                const {reportOption} = processReport(report, personalDetails);
+
+                // Update or remove the report from our map
+                if (reportOption) {
+                    updatedReportsMap.set(reportID, reportOption);
+                } else {
+                    updatedReportsMap.delete(reportID);
+                }
+            });
+
+            // Return new options with updated reports
+            return {
                 ...prevOptions,
-                reports: newReports,
+                reports: Array.from(updatedReportsMap.values()),
             };
-
-            return newOptions;
         });
-
-        // eslint-disable-next-line react-compiler/react-compiler
-    }, [reports, personalDetails, preferredLocale]);
+    }, [changedReports, personalDetails]);
 
     /**
      * This effect is used to update the options list when personal details change.
