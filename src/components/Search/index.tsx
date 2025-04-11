@@ -217,6 +217,14 @@ function Search({queryJSON, currentSearchResults, lastNonEmptySearchResults, onS
         return getSections(type, status, searchResults.data, searchResults.search, shouldGroupByReports);
     }, [searchResults, type, status, shouldGroupByReports]);
 
+    const contentContainerStyleProp = useMemo(() => {
+        return [contentContainerStyle, styles.pb3];
+    }, [contentContainerStyle, styles.pb3]);
+
+    const containerStyleProp = useMemo(() => {
+        return [styles.pv0, type === CONST.SEARCH.DATA_TYPES.CHAT && !isSmallScreenWidth && styles.pt3];
+    }, [styles.pv0, type, isSmallScreenWidth, styles.pt3]);
+
     useEffect(() => {
         /** We only want to display the skeleton for the status filters the first time we load them for a specific data type */
         setShouldShowStatusBarLoading(shouldShowLoadingState && lastSearchType !== type);
@@ -340,6 +348,75 @@ function Search({queryJSON, currentSearchResults, lastNonEmptySearchResults, onS
         [canUseTableReportView, hash],
     );
 
+    const toggleTransaction = useCallback(
+        (item: TransactionListItemType | ReportListItemType | ReportActionListItemType) => {
+            if (isReportActionListItemType(item)) {
+                return;
+            }
+            if (isTransactionListItemType(item)) {
+                if (!item.keyForList) {
+                    return;
+                }
+
+                setSelectedTransactions(prepareTransactionsList(item, selectedTransactions), data);
+                return;
+            }
+
+            if (item.transactions.some((transaction) => selectedTransactions[transaction.keyForList]?.isSelected)) {
+                const reducedSelectedTransactions: SelectedTransactions = {...selectedTransactions};
+
+                item.transactions.forEach((transaction) => {
+                    delete reducedSelectedTransactions[transaction.keyForList];
+                });
+
+                setSelectedTransactions(reducedSelectedTransactions, data);
+                return;
+            }
+
+            setSelectedTransactions(
+                {
+                    ...selectedTransactions,
+                    ...Object.fromEntries(item.transactions.map(mapTransactionItemToSelectedEntry)),
+                },
+                data,
+            );
+        },
+        [setSelectedTransactions, selectedTransactions, data],
+    );
+
+    const toggleAllTransactions = useCallback(() => {
+        const areItemsOfReportType = shouldGroupByReports;
+        const totalSelected = Object.keys(selectedTransactions).length;
+
+        if (totalSelected > 0) {
+            clearSelectedTransactions();
+            return;
+        }
+
+        if (areItemsOfReportType) {
+            setSelectedTransactions(Object.fromEntries((data as ReportListItemType[]).flatMap((item) => item.transactions.map(mapTransactionItemToSelectedEntry))), data);
+
+            return;
+        }
+
+        setSelectedTransactions(Object.fromEntries((data as TransactionListItemType[]).map(mapTransactionItemToSelectedEntry)), data);
+    }, [clearSelectedTransactions, data, selectedTransactions, setSelectedTransactions, shouldGroupByReports]);
+
+    const fetchMoreResults = useCallback(() => {
+        if (!searchResults?.search?.hasMoreResults || shouldShowLoadingState || shouldShowLoadingMoreItems) {
+            return;
+        }
+        setOffset(offset + CONST.SEARCH.RESULTS_PAGE_SIZE);
+    }, [searchResults?.search?.hasMoreResults, shouldShowLoadingState, shouldShowLoadingMoreItems, offset]);
+
+    const onSortPress = useCallback(
+        (column: SearchColumnType, order: SortOrder) => {
+            const newQuery = buildSearchQueryString({...queryJSON, sortBy: column, sortOrder: order});
+            navigation.setParams({q: newQuery});
+        },
+        [navigation, queryJSON],
+    );
+
     const onViewableItemsChanged = useCallback(
         ({viewableItems}: {viewableItems: ViewToken[]}) => {
             const isFirstItemVisible = viewableItems.at(0)?.index === 1;
@@ -419,69 +496,6 @@ function Search({queryJSON, currentSearchResults, lastNonEmptySearchResults, onS
         );
     }
 
-    const toggleTransaction = (item: TransactionListItemType | ReportListItemType | ReportActionListItemType) => {
-        if (isReportActionListItemType(item)) {
-            return;
-        }
-        if (isTransactionListItemType(item)) {
-            if (!item.keyForList) {
-                return;
-            }
-
-            setSelectedTransactions(prepareTransactionsList(item, selectedTransactions), data);
-            return;
-        }
-
-        if (item.transactions.some((transaction) => selectedTransactions[transaction.keyForList]?.isSelected)) {
-            const reducedSelectedTransactions: SelectedTransactions = {...selectedTransactions};
-
-            item.transactions.forEach((transaction) => {
-                delete reducedSelectedTransactions[transaction.keyForList];
-            });
-
-            setSelectedTransactions(reducedSelectedTransactions, data);
-            return;
-        }
-
-        setSelectedTransactions(
-            {
-                ...selectedTransactions,
-                ...Object.fromEntries(item.transactions.map(mapTransactionItemToSelectedEntry)),
-            },
-            data,
-        );
-    };
-
-    const fetchMoreResults = () => {
-        if (!searchResults?.search?.hasMoreResults || shouldShowLoadingState || shouldShowLoadingMoreItems) {
-            return;
-        }
-        setOffset(offset + CONST.SEARCH.RESULTS_PAGE_SIZE);
-    };
-
-    const toggleAllTransactions = () => {
-        const areItemsOfReportType = shouldGroupByReports;
-        const totalSelected = Object.keys(selectedTransactions).length;
-
-        if (totalSelected > 0) {
-            clearSelectedTransactions();
-            return;
-        }
-
-        if (areItemsOfReportType) {
-            setSelectedTransactions(Object.fromEntries((data as ReportListItemType[]).flatMap((item) => item.transactions.map(mapTransactionItemToSelectedEntry))), data);
-
-            return;
-        }
-
-        setSelectedTransactions(Object.fromEntries((data as TransactionListItemType[]).map(mapTransactionItemToSelectedEntry)), data);
-    };
-
-    const onSortPress = (column: SearchColumnType, order: SortOrder) => {
-        const newQuery = buildSearchQueryString({...queryJSON, sortBy: column, sortOrder: order});
-        navigation.setParams({q: newQuery});
-    };
-
     const shouldShowYear = shouldShowYearUtil(searchResults?.data);
     const shouldShowSorting = !Array.isArray(status) && !shouldGroupByReports;
 
@@ -509,8 +523,8 @@ function Search({queryJSON, currentSearchResults, lastNonEmptySearchResults, onS
                         />
                     )
                 }
-                contentContainerStyle={[contentContainerStyle, styles.pb3]}
-                containerStyle={[styles.pv0, type === CONST.SEARCH.DATA_TYPES.CHAT && !isSmallScreenWidth && styles.pt3]}
+                contentContainerStyle={contentContainerStyleProp}
+                containerStyle={containerStyleProp}
                 shouldPreventDefaultFocusOnSelectRow={!canUseTouchScreen()}
                 shouldGroupByReports={shouldGroupByReports}
                 onScroll={onSearchListScroll}
