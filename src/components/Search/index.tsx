@@ -434,6 +434,31 @@ function Search({queryJSON, currentSearchResults, lastNonEmptySearchResults, onS
         [shouldShowLoadingState],
     );
 
+    const sortedData = useMemo(() => getSortedSections(type, status, data, sortBy, sortOrder, shouldGroupByReports), [type, status, data, sortBy, sortOrder, shouldGroupByReports]);
+    const isChat = useMemo(() => type === CONST.SEARCH.DATA_TYPES.CHAT, [type]);
+    const sortedSelectedData = useMemo(
+        () =>
+            sortedData.map((item) => {
+                const baseKey = isChat
+                    ? `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${(item as ReportActionListItemType).reportActionID}`
+                    : `${ONYXKEYS.COLLECTION.TRANSACTION}${(item as TransactionListItemType).transactionID}`;
+                // Check if the base key matches the newSearchResultKey (TransactionListItemType)
+                const isBaseKeyMatch = baseKey === newSearchResultKey;
+                // Check if any transaction within the transactions array (ReportListItemType) matches the newSearchResultKey
+                const isAnyTransactionMatch =
+                    !isChat &&
+                    (item as ReportListItemType)?.transactions?.some((transaction) => {
+                        const transactionKey = `${ONYXKEYS.COLLECTION.TRANSACTION}${transaction.transactionID}`;
+                        return transactionKey === newSearchResultKey;
+                    });
+                // Determine if either the base key or any transaction key matches
+                const shouldAnimateInHighlight = isBaseKeyMatch || isAnyTransactionMatch;
+
+                return mapToItemWithSelectionInfo(item, selectedTransactions, canSelectMultiple, shouldAnimateInHighlight);
+            }),
+        [sortedData, isChat, newSearchResultKey, selectedTransactions, canSelectMultiple],
+    );
+
     if (shouldShowLoadingState) {
         return (
             <SearchRowSkeleton
@@ -449,26 +474,6 @@ function Search({queryJSON, currentSearchResults, lastNonEmptySearchResults, onS
     }
 
     const ListItem = getListItem(type, status, shouldGroupByReports);
-    const sortedData = getSortedSections(type, status, data, sortBy, sortOrder, shouldGroupByReports);
-    const isChat = type === CONST.SEARCH.DATA_TYPES.CHAT;
-    const sortedSelectedData = sortedData.map((item) => {
-        const baseKey = isChat
-            ? `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${(item as ReportActionListItemType).reportActionID}`
-            : `${ONYXKEYS.COLLECTION.TRANSACTION}${(item as TransactionListItemType).transactionID}`;
-        // Check if the base key matches the newSearchResultKey (TransactionListItemType)
-        const isBaseKeyMatch = baseKey === newSearchResultKey;
-        // Check if any transaction within the transactions array (ReportListItemType) matches the newSearchResultKey
-        const isAnyTransactionMatch =
-            !isChat &&
-            (item as ReportListItemType)?.transactions?.some((transaction) => {
-                const transactionKey = `${ONYXKEYS.COLLECTION.TRANSACTION}${transaction.transactionID}`;
-                return transactionKey === newSearchResultKey;
-            });
-        // Determine if either the base key or any transaction key matches
-        const shouldAnimateInHighlight = isBaseKeyMatch || isAnyTransactionMatch;
-
-        return mapToItemWithSelectionInfo(item, selectedTransactions, canSelectMultiple, shouldAnimateInHighlight);
-    });
 
     const hasErrors = Object.keys(searchResults?.errors ?? {}).length > 0 && !isOffline;
 
