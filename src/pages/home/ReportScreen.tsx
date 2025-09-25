@@ -3,7 +3,7 @@ import {useIsFocused} from '@react-navigation/native';
 import {deepEqual} from 'fast-equals';
 import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {FlatList, ViewStyle} from 'react-native';
-import {DeviceEventEmitter, InteractionManager, View} from 'react-native';
+import {InteractionManager, View} from 'react-native';
 import Banner from '@components/Banner';
 import FullPageNotFoundView from '@components/BlockingViews/FullPageNotFoundView';
 import DragAndDropProvider from '@components/DragAndDrop/Provider';
@@ -28,6 +28,7 @@ import useReportFetching from '@hooks/useReportFetching';
 import useReportIsArchived from '@hooks/useReportIsArchived';
 import useReportNavigation from '@hooks/useReportNavigation';
 import useReportNotifications from '@hooks/useReportNotifications';
+import useReportSubscriptions from '@hooks/useReportSubscriptions';
 import useResponsiveLayout from '@hooks/useResponsiveLayout';
 import useThemeStyles from '@hooks/useThemeStyles';
 import useViewportOffsetTop from '@hooks/useViewportOffsetTop';
@@ -55,11 +56,9 @@ import {
     isMoneyRequestReport,
     isOneTransactionThread,
     isReportTransactionThread,
-    isValidReportIDFromPath,
 } from '@libs/ReportUtils';
 import type {ReportsSplitNavigatorParamList} from '@navigation/types';
-import {setShouldShowComposeInput} from '@userActions/Composer';
-import {clearDeleteTransactionNavigateBackUrl, subscribeToReportLeavingEvents, unsubscribeFromLeavingRoomReportChannel} from '@userActions/Report';
+import {clearDeleteTransactionNavigateBackUrl} from '@userActions/Report';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import ROUTES from '@src/ROUTES';
@@ -200,7 +199,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const combinedReportActions = getCombinedReportActions(reportActions, transactionThreadReportID ?? null, Object.values(transactionThreadReportActions));
     const isSentMoneyReport = useMemo(() => reportActions.some((action) => isSentMoneyReportAction(action)), [reportActions]);
     const lastReportAction = [...combinedReportActions, parentReportAction].find((action) => canEditReportAction(action) && !isMoneyRequestAction(action));
-    const didSubscribeToReportLeavingEvents = useRef(false);
     const isTransactionThreadView = isReportTransactionThread(report);
     const isMoneyRequestOrInvoiceReport = isMoneyRequestReport(report) || isInvoiceReport(report);
     // Prevent the empty state flash by ensuring transaction data is fully loaded before deciding which view to render
@@ -232,6 +230,16 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     useReportNotifications({
         reportID,
         isTopMostReportId,
+    });
+
+    // Custom hook to handle report subscriptions and event listeners
+    useReportSubscriptions({
+        report,
+        reportIDFromRoute,
+        reportID,
+        reportMetadata,
+        isSkippingOpenReport,
+        setIsLinkingToMessage,
     });
 
     useEffect(() => {
@@ -300,20 +308,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         });
     }, [isFocused, deleteTransactionNavigateBackUrl]);
 
-
-    useEffect(() => {
-        const skipOpenReportListener = DeviceEventEmitter.addListener(`switchToPreExistingReport_${reportID}`, ({preexistingReportID}: {preexistingReportID: string}) => {
-            if (!preexistingReportID) {
-                return;
-            }
-            isSkippingOpenReport.current = true;
-        });
-
-        return () => {
-            skipOpenReportListener.remove();
-        };
-    }, [reportID]);
-
     const dismissBanner = useCallback(() => {
         setIsBannerVisible(false);
     }, []);
@@ -322,60 +316,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         Navigation.navigate(ROUTES.REPORT_WITH_ID.getRoute(accountManagerReportID));
     }, [accountManagerReportID]);
 
-
-    useEffect(() => {
-        const interactionTask = InteractionManager.runAfterInteractions(() => {
-            setShouldShowComposeInput(true);
-        });
-        return () => {
-            interactionTask.cancel();
-            if (!didSubscribeToReportLeavingEvents.current) {
-                return;
-            }
-
-            unsubscribeFromLeavingRoomReportChannel(reportID);
-        };
-
-        // I'm disabling the warning, as it expects to use exhaustive deps, even though we want this useEffect to run only on the first render.
-        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-        if (!isValidReportIDFromPath(reportIDFromRoute)) {
-            return;
-        }
-        // Ensures the optimistic report is created successfully
-        if (reportIDFromRoute !== report?.reportID || report?.pendingFields?.createChat) {
-            return;
-        }
-        // Ensures subscription event succeeds when the report/workspace room is created optimistically.
-        // Check if the optimistic `OpenReport` or `AddWorkspaceRoom` has succeeded by confirming
-        // any `pendingFields.createChat` or `pendingFields.addWorkspaceRoom` fields are set to null.
-        // Existing reports created will have empty fields for `pendingFields`.
-        const didCreateReportSuccessfully = !report?.pendingFields || (!report?.pendingFields.addWorkspaceRoom && !report?.pendingFields.createChat);
-        let interactionTask: ReturnType<typeof InteractionManager.runAfterInteractions> | null = null;
-        if (!didSubscribeToReportLeavingEvents.current && didCreateReportSuccessfully) {
-            interactionTask = InteractionManager.runAfterInteractions(() => {
-                subscribeToReportLeavingEvents(reportIDFromRoute);
-                didSubscribeToReportLeavingEvents.current = true;
-            });
-        }
-        return () => {
-            if (!interactionTask) {
-                return;
-            }
-            interactionTask.cancel();
-        };
-    }, [report, didSubscribeToReportLeavingEvents, reportIDFromRoute]);
-
     const actionListValue = useMemo((): ActionListContextType => ({flatListRef, scrollPosition, setScrollPosition}), [flatListRef, scrollPosition, setScrollPosition]);
-
-    // This helps in tracking from the moment 'route' triggers useMemo until isLoadingInitialReportActions becomes true. It prevents blinking when loading reportActions from cache.
-    useEffect(() => {
-        InteractionManager.runAfterInteractions(() => {
-            setIsLinkingToMessage(false);
-        });
-    }, [reportMetadata?.isLoadingInitialReportActions]);
 
     const lastRoute = usePrevious(route);
 
