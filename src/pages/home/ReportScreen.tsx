@@ -1,11 +1,10 @@
 import {PortalHost} from '@gorhom/portal';
 import {useIsFocused} from '@react-navigation/native';
-import {accountIDSelector} from '@selectors/Session';
 import {deepEqual} from 'fast-equals';
 import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {FlatList, ViewStyle} from 'react-native';
 import {DeviceEventEmitter, InteractionManager, View} from 'react-native';
-import type {OnyxCollection, OnyxEntry} from 'react-native-onyx';
+import type {OnyxEntry} from 'react-native-onyx';
 import Banner from '@components/Banner';
 import FullPageNotFoundView from '@components/BlockingViews/FullPageNotFoundView';
 import DragAndDropProvider from '@components/DragAndDrop/Provider';
@@ -18,7 +17,6 @@ import ReportActionsSkeletonView from '@components/ReportActionsSkeletonView';
 import ScreenWrapper from '@components/ScreenWrapper';
 import useAppFocusEvent from '@hooks/useAppFocusEvent';
 import useCurrentReportID from '@hooks/useCurrentReportID';
-import useDeepCompareRef from '@hooks/useDeepCompareRef';
 import useIsAnonymousUser from '@hooks/useIsAnonymousUser';
 import useIsReportReadyToDisplay from '@hooks/useIsReportReadyToDisplay';
 import useLocalize from '@hooks/useLocalize';
@@ -26,18 +24,17 @@ import useNetwork from '@hooks/useNetwork';
 import useNewTransactions from '@hooks/useNewTransactions';
 import useOnyx from '@hooks/useOnyx';
 import usePaginatedReportActions from '@hooks/usePaginatedReportActions';
-import useParentReportAction from '@hooks/useParentReportAction';
 import usePermissions from '@hooks/usePermissions';
 import usePrevious from '@hooks/usePrevious';
+import useReportData from '@hooks/useReportData';
 import useReportIsArchived from '@hooks/useReportIsArchived';
 import useResponsiveLayout from '@hooks/useResponsiveLayout';
 import useThemeStyles from '@hooks/useThemeStyles';
-import useTransactionsAndViolationsForReport from '@hooks/useTransactionsAndViolationsForReport';
 import useViewportOffsetTop from '@hooks/useViewportOffsetTop';
 import {hideEmojiPicker} from '@libs/actions/EmojiPickerAction';
 import getNonEmptyStringOnyxID from '@libs/getNonEmptyStringOnyxID';
 import Log from '@libs/Log';
-import {getAllNonDeletedTransactions, shouldDisplayReportTableView, shouldWaitForTransactions as shouldWaitForTransactionsUtil} from '@libs/MoneyRequestReportUtils';
+import {shouldDisplayReportTableView, shouldWaitForTransactions as shouldWaitForTransactionsUtil} from '@libs/MoneyRequestReportUtils';
 import Navigation, {navigationRef} from '@libs/Navigation/Navigation';
 import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavigation/types';
 import clearReportNotifications from '@libs/Notification/clearReportNotifications';
@@ -49,7 +46,6 @@ import {
     getIOUActionForReportID,
     getOneTransactionThreadReportID,
     isCreatedAction,
-    isDeletedParentAction,
     isMoneyRequestAction,
     isSentMoneyReportAction,
     isWhisperAction,
@@ -107,15 +103,6 @@ type ReportScreenNavigationProps = PlatformStackScreenProps<ReportsSplitNavigato
 
 type ReportScreenProps = ReportScreenNavigationProps;
 
-const defaultReportMetadata = {
-    hasOnceLoadedReportActions: false,
-    isLoadingInitialReportActions: true,
-    isLoadingOlderReportActions: false,
-    hasLoadingOlderReportActionsError: false,
-    isLoadingNewerReportActions: false,
-    hasLoadingNewerReportActionsError: false,
-    isOptimisticReport: false,
-};
 
 const reportDetailScreens = [
     ...Object.values(SCREENS.REPORT_DETAILS),
@@ -135,7 +122,7 @@ function isEmpty(report: OnyxEntry<OnyxTypes.Report>): boolean {
     if (isEmptyObject(report)) {
         return true;
     }
-    return !Object.values(report).some((value) => value !== undefined && value !== '');
+    return !Object.values(report as Record<string, unknown>).some((value) => value !== undefined && value !== '');
 }
 
 function ReportScreen({route, navigation}: ReportScreenProps) {
@@ -154,24 +141,31 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const {shouldUseNarrowLayout, isInNarrowPaneModal} = useResponsiveLayout();
     const currentReportIDValue = useCurrentReportID();
 
-    const [isComposerFullSize = false] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_IS_COMPOSER_FULL_SIZE}${reportIDFromRoute}`, {canBeMissing: true});
-    const [accountManagerReportID] = useOnyx(ONYXKEYS.ACCOUNT_MANAGER_REPORT_ID, {canBeMissing: true});
-    const [accountManagerReport] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${getNonEmptyStringOnyxID(accountManagerReportID)}`, {canBeMissing: true});
-    const [userLeavingStatus = false] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_USER_IS_LEAVING_ROOM}${reportIDFromRoute}`, {canBeMissing: true});
-    const [reportOnyx] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${reportIDFromRoute}`, {allowStaleData: true, canBeMissing: true});
-    const [reportNameValuePairsOnyx] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS}${reportIDFromRoute}`, {allowStaleData: true, canBeMissing: true});
-    const [reportMetadata = defaultReportMetadata] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_METADATA}${reportIDFromRoute}`, {canBeMissing: true, allowStaleData: true});
-    const [policies = getEmptyObject<NonNullable<OnyxCollection<OnyxTypes.Policy>>>()] = useOnyx(ONYXKEYS.COLLECTION.POLICY, {allowStaleData: true, canBeMissing: false});
-
-    const parentReportAction = useParentReportAction(reportOnyx);
-
-    const deletedParentAction = isDeletedParentAction(parentReportAction);
-    const prevDeletedParentAction = usePrevious(deletedParentAction);
-
-    const permissions = useDeepCompareRef(reportOnyx?.permissions);
+    // Custom hook to consolidate all report data fetching
+    const reportData = useReportData(reportIDFromRoute, isOffline);
+    const {
+        report,
+        reportID,
+        reportMetadata,
+        chatReport,
+        accountManagerReport,
+        currentUserAccountID,
+        personalDetails,
+        parentReportAction,
+        deletedParentAction,
+        policy,
+        allReportViolations,
+        reportTransactions,
+        visibleTransactions,
+        isComposerFullSize,
+        userLeavingStatus,
+        isLoadingReportData,
+        isLoadingApp,
+        accountManagerReportID,
+    } = reportData;
 
     const isAnonymousUser = useIsAnonymousUser();
-    const [isLoadingReportData = true] = useOnyx(ONYXKEYS.IS_LOADING_REPORT_DATA, {canBeMissing: true});
+    const prevDeletedParentAction = usePrevious(deletedParentAction);
     const prevIsLoadingReportData = usePrevious(isLoadingReportData);
     const prevIsAnonymousUser = useRef(false);
 
@@ -198,7 +192,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         navigation.setParams({reportID: lastAccessedReportID});
     }, [isBetaEnabled, navigation, route]);
 
-    const [personalDetails] = useOnyx(ONYXKEYS.PERSONAL_DETAILS_LIST, {canBeMissing: true});
     const chatWithAccountManagerText = useMemo(() => {
         if (accountManagerReportID) {
             const participants = getParticipantsAccountIDsForDisplay(accountManagerReport, false, true);
@@ -213,70 +206,10 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         return '';
     }, [accountManagerReportID, accountManagerReport, personalDetails, translate]);
 
-    /**
-     * Create a lightweight Report so as to keep the re-rendering as light as possible by
-     * passing in only the required props.
-     *
-     * Also, this plays nicely in contrast with Onyx,
-     * which creates a new object every time collection changes. Because of this we can't
-     * put this into onyx selector as it will be the same.
-     */
-    const report = useMemo(
-        () =>
-            reportOnyx && {
-                hasParentAccess: reportOnyx.hasParentAccess,
-                lastReadTime: reportOnyx.lastReadTime,
-                reportID: reportOnyx.reportID,
-                policyID: reportOnyx.policyID,
-                lastVisibleActionCreated: reportOnyx.lastVisibleActionCreated,
-                statusNum: reportOnyx.statusNum,
-                stateNum: reportOnyx.stateNum,
-                writeCapability: reportOnyx.writeCapability,
-                type: reportOnyx.type,
-                errorFields: reportOnyx.errorFields,
-                parentReportID: reportOnyx.parentReportID,
-                parentReportActionID: reportOnyx.parentReportActionID,
-                chatType: reportOnyx.chatType,
-                pendingFields: reportOnyx.pendingFields,
-                isDeletedParentAction: reportOnyx.isDeletedParentAction,
-                reportName: reportOnyx.reportName,
-                description: reportOnyx.description,
-                managerID: reportOnyx.managerID,
-                total: reportOnyx.total,
-                nonReimbursableTotal: reportOnyx.nonReimbursableTotal,
-                fieldList: reportOnyx.fieldList,
-                ownerAccountID: reportOnyx.ownerAccountID,
-                currency: reportOnyx.currency,
-                unheldTotal: reportOnyx.unheldTotal,
-                unheldNonReimbursableTotal: reportOnyx.unheldNonReimbursableTotal,
-                participants: reportOnyx.participants,
-                isWaitingOnBankAccount: reportOnyx.isWaitingOnBankAccount,
-                iouReportID: reportOnyx.iouReportID,
-                isOwnPolicyExpenseChat: reportOnyx.isOwnPolicyExpenseChat,
-                isPinned: reportOnyx.isPinned,
-                chatReportID: reportOnyx.chatReportID,
-                visibility: reportOnyx.visibility,
-                oldPolicyName: reportOnyx.oldPolicyName,
-                policyName: reportOnyx.policyName,
-                private_isArchived: reportNameValuePairsOnyx?.private_isArchived,
-                lastMentionedTime: reportOnyx.lastMentionedTime,
-                avatarUrl: reportOnyx.avatarUrl,
-                permissions,
-                invoiceReceiver: reportOnyx.invoiceReceiver,
-                policyAvatar: reportOnyx.policyAvatar,
-            },
-        [reportOnyx, reportNameValuePairsOnyx, permissions],
-    );
-    const reportID = report?.reportID;
-
-    const [chatReport] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${report?.chatReportID}`, {canBeMissing: true});
     const prevReport = usePrevious(report);
     const prevUserLeavingStatus = usePrevious(userLeavingStatus);
     const lastReportIDFromRoute = usePrevious(reportIDFromRoute);
     const [isLinkingToMessage, setIsLinkingToMessage] = useState(!!reportActionIDFromRoute);
-
-    const [currentUserAccountID = -1] = useOnyx(ONYXKEYS.SESSION, {selector: accountIDSelector, canBeMissing: false});
-    const [isLoadingApp] = useOnyx(ONYXKEYS.IS_LOADING_APP, {canBeMissing: true});
     const {reportActions: unfilteredReportActions, linkedAction, sortedAllReportActions, hasNewerActions, hasOlderActions} = usePaginatedReportActions(reportID, reportActionIDFromRoute);
     // wrapping in useMemo because this is array operation and can cause performance issues
     const reportActions = useMemo(() => getFilteredReportActionsForReportView(unfilteredReportActions), [unfilteredReportActions]);
@@ -304,14 +237,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     // If the count is too high (equal to or exceeds the web pagination size / 50) and there are no cached messages in the report,
     // OpenReport will be called each time the user scrolls up the report a bit, clicks on report preview, and then goes back.
     const isLinkedMessagePageReady = isLinkedMessageAvailable && (reportActions.length - indexOfLinkedMessage >= CONST.REPORT.MIN_INITIAL_REPORT_ACTION_COUNT || doesCreatedActionExists());
-    const {transactions: allReportTransactions, violations: allReportViolations} = useTransactionsAndViolationsForReport(reportIDFromRoute);
-
-    const reportTransactions = useMemo(() => getAllNonDeletedTransactions(allReportTransactions, reportActions), [allReportTransactions, reportActions]);
-    // wrapping in useMemo because this is array operation and can cause performance issues
-    const visibleTransactions = useMemo(
-        () => reportTransactions?.filter((transaction) => isOffline || transaction.pendingAction !== CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE),
-        [reportTransactions, isOffline],
-    );
     const reportTransactionIDs = useMemo(() => visibleTransactions?.map((transaction) => transaction.transactionID), [visibleTransactions]);
 
     const transactionThreadReportID = getOneTransactionThreadReportID(report, chatReport, reportActions ?? [], isOffline, reportTransactionIDs);
@@ -322,8 +247,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const combinedReportActions = getCombinedReportActions(reportActions, transactionThreadReportID ?? null, Object.values(transactionThreadReportActions));
     const isSentMoneyReport = useMemo(() => reportActions.some((action) => isSentMoneyReportAction(action)), [reportActions]);
     const lastReportAction = [...combinedReportActions, parentReportAction].find((action) => canEditReportAction(action) && !isMoneyRequestAction(action));
-    // wrapping in useMemo to stabilize children re-rendering
-    const policy = policies?.[`${ONYXKEYS.COLLECTION.POLICY}${report?.policyID}`];
     const isTopMostReportId = currentReportIDValue?.currentReportID === reportIDFromRoute;
     const didSubscribeToReportLeavingEvents = useRef(false);
     const isTransactionThreadView = isReportTransactionThread(report);
