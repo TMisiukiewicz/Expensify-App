@@ -14,7 +14,6 @@ import MoneyRequestReportActionsList from '@components/MoneyRequestReportView/Mo
 import OfflineWithFeedback from '@components/OfflineWithFeedback';
 import ReportActionsSkeletonView from '@components/ReportActionsSkeletonView';
 import ScreenWrapper from '@components/ScreenWrapper';
-import useAppFocusEvent from '@hooks/useAppFocusEvent';
 import useCurrentReportID from '@hooks/useCurrentReportID';
 import useIsAnonymousUser from '@hooks/useIsAnonymousUser';
 import useIsReportReadyToDisplay from '@hooks/useIsReportReadyToDisplay';
@@ -28,6 +27,7 @@ import useReportData from '@hooks/useReportData';
 import useReportFetching from '@hooks/useReportFetching';
 import useReportIsArchived from '@hooks/useReportIsArchived';
 import useReportNavigation from '@hooks/useReportNavigation';
+import useReportNotifications from '@hooks/useReportNotifications';
 import useResponsiveLayout from '@hooks/useResponsiveLayout';
 import useThemeStyles from '@hooks/useThemeStyles';
 import useViewportOffsetTop from '@hooks/useViewportOffsetTop';
@@ -36,7 +36,6 @@ import getNonEmptyStringOnyxID from '@libs/getNonEmptyStringOnyxID';
 import {shouldDisplayReportTableView, shouldWaitForTransactions as shouldWaitForTransactionsUtil} from '@libs/MoneyRequestReportUtils';
 import Navigation from '@libs/Navigation/Navigation';
 import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavigation/types';
-import clearReportNotifications from '@libs/Notification/clearReportNotifications';
 import {getPersonalDetailsForAccountIDs} from '@libs/OptionsListUtils';
 import {getDisplayNameOrDefault} from '@libs/PersonalDetailsUtils';
 import {
@@ -60,7 +59,7 @@ import {
 } from '@libs/ReportUtils';
 import type {ReportsSplitNavigatorParamList} from '@navigation/types';
 import {setShouldShowComposeInput} from '@userActions/Composer';
-import {clearDeleteTransactionNavigateBackUrl, subscribeToReportLeavingEvents, unsubscribeFromLeavingRoomReportChannel, updateLastVisitTime} from '@userActions/Report';
+import {clearDeleteTransactionNavigateBackUrl, subscribeToReportLeavingEvents, unsubscribeFromLeavingRoomReportChannel} from '@userActions/Report';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import ROUTES from '@src/ROUTES';
@@ -229,6 +228,12 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         route,
     });
 
+    // Custom hook to handle notification clearing and user presence tracking
+    useReportNotifications({
+        reportID,
+        isTopMostReportId,
+    });
+
     useEffect(() => {
         if (!prevIsFocused || isFocused) {
             return;
@@ -295,12 +300,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         });
     }, [isFocused, deleteTransactionNavigateBackUrl]);
 
-    useEffect(() => {
-        if (!reportID || !isFocused) {
-            return;
-        }
-        updateLastVisitTime(reportID);
-    }, [reportID, isFocused]);
 
     useEffect(() => {
         const skipOpenReportListener = DeviceEventEmitter.addListener(`switchToPreExistingReport_${reportID}`, ({preexistingReportID}: {preexistingReportID: string}) => {
@@ -323,18 +322,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         Navigation.navigate(ROUTES.REPORT_WITH_ID.getRoute(accountManagerReportID));
     }, [accountManagerReportID]);
 
-    // Clear notifications for the current report when it's opened and re-focused
-    const clearNotifications = useCallback(() => {
-        // Check if this is the top-most ReportScreen since the Navigator preserves multiple at a time
-        if (!isTopMostReportId) {
-            return;
-        }
-
-        clearReportNotifications(reportID);
-    }, [reportID, isTopMostReportId]);
-
-    useEffect(clearNotifications, [clearNotifications]);
-    useAppFocusEvent(clearNotifications);
 
     useEffect(() => {
         const interactionTask = InteractionManager.runAfterInteractions(() => {
