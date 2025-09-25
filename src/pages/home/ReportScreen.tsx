@@ -15,7 +15,6 @@ import OfflineWithFeedback from '@components/OfflineWithFeedback';
 import ReportActionsSkeletonView from '@components/ReportActionsSkeletonView';
 import ScreenWrapper from '@components/ScreenWrapper';
 import useCurrentReportID from '@hooks/useCurrentReportID';
-import useIsAnonymousUser from '@hooks/useIsAnonymousUser';
 import useIsReportReadyToDisplay from '@hooks/useIsReportReadyToDisplay';
 import useLocalize from '@hooks/useLocalize';
 import useNetwork from '@hooks/useNetwork';
@@ -65,7 +64,6 @@ import ROUTES from '@src/ROUTES';
 import type SCREENS from '@src/SCREENS';
 import type * as OnyxTypes from '@src/types/onyx';
 import {getEmptyObject} from '@src/types/utils/EmptyObject';
-import getEmptyArray from '@src/types/utils/getEmptyArray';
 import HeaderView from './HeaderView';
 import ReactionListWrapper from './ReactionListWrapper';
 import ReportActionsView from './report/ReportActionsView';
@@ -84,7 +82,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const reportActionIDFromRoute = route?.params?.reportActionID;
     const isFocused = useIsFocused();
     const prevIsFocused = usePrevious(isFocused);
-    const firstRenderRef = useRef(true);
     const isSkippingOpenReport = useRef(false);
     const flatListRef = useRef<FlatList>(null);
     const {isOffline} = useNetwork();
@@ -99,30 +96,19 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         reportMetadata,
         chatReport,
         accountManagerReport,
-        currentUserAccountID,
         personalDetails,
         parentReportAction,
-        deletedParentAction,
         policy,
         allReportViolations,
         reportTransactions,
         visibleTransactions,
         isComposerFullSize,
-        userLeavingStatus,
-        isLoadingReportData,
-        isLoadingApp,
         accountManagerReportID,
     } = reportData;
 
-    const isAnonymousUser = useIsAnonymousUser();
-    const prevDeletedParentAction = usePrevious(deletedParentAction);
-    const prevReport = usePrevious(report);
-    const prevUserLeavingStatus = usePrevious(userLeavingStatus);
     const isTopMostReportId = currentReportIDValue?.currentReportID === reportIDFromRoute;
-
-    const lastReportIDFromRoute = usePrevious(reportIDFromRoute);
     const [isLinkingToMessage, setIsLinkingToMessage] = useState(!!reportActionIDFromRoute);
-    const {reportActions: unfilteredReportActions, linkedAction, sortedAllReportActions, hasNewerActions, hasOlderActions} = usePaginatedReportActions(reportID, reportActionIDFromRoute);
+    const {reportActions: unfilteredReportActions, linkedAction, hasNewerActions, hasOlderActions} = usePaginatedReportActions(reportID, reportActionIDFromRoute);
     // wrapping in useMemo because this is array operation and can cause performance issues
     const reportActions = useMemo(() => getFilteredReportActionsForReportView(unfilteredReportActions), [unfilteredReportActions]);
     const [childReport] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${linkedAction?.childReportID}`, {canBeMissing: true});
@@ -134,31 +120,13 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
 
     const {reportPendingAction, reportErrors} = getReportOfflinePendingActionAndErrors(report);
     const screenWrapperStyle: ViewStyle[] = [styles.appContent, styles.flex1, {marginTop: viewportOffsetTop}];
-    const isOptimisticDelete = report?.statusNum === CONST.REPORT.STATUS_NUM.CLOSED;
     const isReportArchived = useReportIsArchived(report?.reportID);
 
     // Custom hook to handle all navigation logic
-    const {shouldShowNotFoundPage, onBackButtonPress} = useReportNavigation({
+    const {shouldShowNotFoundPage, onBackButtonPress, firstRenderRef} = useReportNavigation({
         reportIDFromRoute,
         reportActionIDFromRoute,
-        report,
-        prevReport,
-        userLeavingStatus,
-        prevUserLeavingStatus,
-        deletedParentAction,
-        prevDeletedParentAction,
-        isTopMostReportId,
-        reportID,
-        reportMetadata,
-        isLoadingApp,
-        isOptimisticDelete,
-        linkedAction,
-        sortedAllReportActions: sortedAllReportActions ?? getEmptyArray(),
-        reportActions,
         isLinkingToMessage,
-        currentUserAccountID,
-        isReportArchived,
-        firstRenderRef,
         route,
         navigation,
     });
@@ -192,7 +160,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const reportTransactionIDs = useMemo(() => visibleTransactions?.map((transaction) => transaction.transactionID), [visibleTransactions]);
 
     const transactionThreadReportID = getOneTransactionThreadReportID(report, chatReport, reportActions ?? [], isOffline, reportTransactionIDs);
-    const [transactionThreadReport] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${transactionThreadReportID}`, {canBeMissing: true});
     const [transactionThreadReportActions = getEmptyObject<OnyxTypes.ReportActions>()] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${transactionThreadReportID}`, {
         canBeMissing: true,
     });
@@ -210,19 +177,10 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     useReportFetching({
         reportIDFromRoute,
         reportActionIDFromRoute,
-        report,
-        reportMetadata,
-        isOffline,
-        reportID,
-        isAnonymousUser,
-        isLoadingReportData,
         transactionThreadReportID,
-        transactionThreadReport,
         reportActions,
-        isTransactionThreadView,
         isLinkedMessagePageReady,
         firstRenderRef,
-        lastReportIDFromRoute,
         route,
     });
 

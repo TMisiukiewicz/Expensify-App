@@ -1,15 +1,18 @@
 import type {RouteProp} from '@react-navigation/native';
 import {useIsFocused} from '@react-navigation/native';
 import {useCallback, useEffect, useRef} from 'react';
-import type {OnyxEntry} from 'react-native-onyx';
 import {getIOUActionForReportID} from '@libs/ReportActionsUtils';
-import {getReportTransactions, isChatThread, isHiddenForCurrentUser, isPolicyExpenseChat, isTaskReport} from '@libs/ReportUtils';
+import {getReportTransactions, isChatThread, isHiddenForCurrentUser, isPolicyExpenseChat, isReportTransactionThread, isTaskReport} from '@libs/ReportUtils';
 import type {ReportsSplitNavigatorParamList} from '@navigation/types';
 import {setShouldShowComposeInput} from '@userActions/Composer';
 import {createTransactionThreadReport, openReport, readNewestAction} from '@userActions/Report';
 import CONST from '@src/CONST';
+import ONYXKEYS from '@src/ONYXKEYS';
 import type SCREENS from '@src/SCREENS';
 import type * as OnyxTypes from '@src/types/onyx';
+import useIsAnonymousUser from './useIsAnonymousUser';
+import useNetwork from './useNetwork';
+import useOnyx from './useOnyx';
 import usePrevious from './usePrevious';
 import useResponsiveLayout from './useResponsiveLayout';
 
@@ -20,64 +23,33 @@ type UseReportFetchingProps = {
     reportIDFromRoute: string | undefined;
     /** Report action ID from route parameters */
     reportActionIDFromRoute: string | undefined;
-
-    /** Current report object */
-    report: OnyxEntry<OnyxTypes.Report>;
-    /** Report metadata including loading states */
-    reportMetadata: OnyxEntry<OnyxTypes.ReportMetadata>;
-
-    /** Whether the app is offline */
-    isOffline: boolean;
-    /** Current report ID */
-    reportID: string | undefined;
-
-    /** Whether user is anonymous */
-    isAnonymousUser: boolean;
-    /** Whether report data is loading */
-    isLoadingReportData: boolean;
-
     /** Transaction thread report ID */
     transactionThreadReportID: string | undefined;
-    /** Transaction thread report object */
-    transactionThreadReport: OnyxEntry<OnyxTypes.Report>;
-
     /** Report actions for invitation detection */
     reportActions: OnyxTypes.ReportAction[];
-    /** Whether this is a transaction thread view */
-    isTransactionThreadView: boolean;
     /** Whether the message page is ready for linking */
     isLinkedMessagePageReady: boolean;
-
     /** First render ref to avoid initial effects */
     firstRenderRef: React.MutableRefObject<boolean>;
-    /** Last report ID from route for comparison */
-    lastReportIDFromRoute: string | undefined;
-
     /** React Navigation route object */
     route: ReportScreenRoute;
 };
 
-function useReportFetching({
-    reportIDFromRoute,
-    reportActionIDFromRoute,
-    report,
-    reportMetadata,
-    isOffline,
-    reportID,
-    isAnonymousUser,
-    isLoadingReportData,
-    transactionThreadReportID,
-    transactionThreadReport,
-    reportActions,
-    isTransactionThreadView,
-    isLinkedMessagePageReady,
-    firstRenderRef,
-    lastReportIDFromRoute,
-    route,
-}: UseReportFetchingProps) {
+function useReportFetching({reportIDFromRoute, reportActionIDFromRoute, transactionThreadReportID, reportActions, isLinkedMessagePageReady, firstRenderRef, route}: UseReportFetchingProps) {
     const isFocused = useIsFocused();
     const prevIsFocused = usePrevious(isFocused);
     const {shouldUseNarrowLayout} = useResponsiveLayout();
+
+    // Fetch data directly using Onyx hooks
+    const [report] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${reportIDFromRoute}`, {canBeMissing: true});
+    const [reportMetadata] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_METADATA}${reportIDFromRoute}`, {canBeMissing: true});
+    const {isOffline} = useNetwork();
+    const reportID = report?.reportID;
+    const isAnonymousUser = useIsAnonymousUser();
+    const [isLoadingReportData] = useOnyx(ONYXKEYS.IS_LOADING_REPORT_DATA);
+    const [transactionThreadReport] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${transactionThreadReportID}`, {canBeMissing: true});
+    const isTransactionThreadView = isReportTransactionThread(report);
+    const lastReportIDFromRoute = usePrevious(reportIDFromRoute);
 
     // Track anonymous user state
     const prevIsAnonymousUser = useRef(false);
@@ -131,6 +103,7 @@ function useReportFetching({
 
     // Re-fetch data after anonymous user signs in
     useEffect(() => {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         if (isLoadingReportData || !prevIsLoadingReportData || !prevIsAnonymousUser.current || isAnonymousUser) {
             return;
         }

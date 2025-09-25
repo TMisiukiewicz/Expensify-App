@@ -4,7 +4,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {OnyxEntry} from 'react-native-onyx';
 import Log from '@libs/Log';
 import Navigation, {navigationRef} from '@libs/Navigation/Navigation';
-import {isWhisperAction, shouldReportActionBeVisible} from '@libs/ReportActionsUtils';
+import {getFilteredReportActionsForReportView, isWhisperAction, shouldReportActionBeVisible} from '@libs/ReportActionsUtils';
 import {
     canUserPerformWriteAction,
     findLastAccessedReport,
@@ -19,13 +19,19 @@ import {isNumeric} from '@libs/ValidationUtils';
 import type {ReportsSplitNavigatorParamList} from '@navigation/types';
 import {navigateToConciergeChat} from '@userActions/Report';
 import CONST from '@src/CONST';
+import ONYXKEYS from '@src/ONYXKEYS';
 import ROUTES from '@src/ROUTES';
 import type {Route} from '@src/ROUTES';
 import SCREENS from '@src/SCREENS';
 import type * as OnyxTypes from '@src/types/onyx';
 import {isEmptyObject} from '@src/types/utils/EmptyObject';
+import useCurrentReportID from './useCurrentReportID';
+import useCurrentUserPersonalDetails from './useCurrentUserPersonalDetails';
+import useOnyx from './useOnyx';
+import usePaginatedReportActions from './usePaginatedReportActions';
 import usePermissions from './usePermissions';
 import usePrevious from './usePrevious';
+import useReportIsArchived from './useReportIsArchived';
 import useResponsiveLayout from './useResponsiveLayout';
 
 const reportDetailScreens = [
@@ -49,24 +55,7 @@ type ReportScreenNavigation = NavigationProp<ReportsSplitNavigatorParamList, typ
 type UseReportNavigationProps = {
     reportIDFromRoute: string | undefined;
     reportActionIDFromRoute: string | undefined;
-    report: OnyxEntry<OnyxTypes.Report>;
-    prevReport: OnyxEntry<OnyxTypes.Report>;
-    userLeavingStatus: boolean;
-    prevUserLeavingStatus: boolean;
-    deletedParentAction: boolean;
-    prevDeletedParentAction: boolean;
-    isTopMostReportId: boolean;
-    reportID: string | undefined;
-    reportMetadata: OnyxEntry<OnyxTypes.ReportMetadata>;
-    isLoadingApp: boolean | undefined;
-    isOptimisticDelete: boolean;
-    linkedAction: OnyxEntry<OnyxTypes.ReportAction>;
-    sortedAllReportActions: OnyxTypes.ReportAction[];
-    reportActions: OnyxTypes.ReportAction[];
     isLinkingToMessage: boolean;
-    currentUserAccountID: number;
-    isReportArchived: boolean;
-    firstRenderRef: React.MutableRefObject<boolean>;
     route: ReportScreenRoute;
     navigation: ReportScreenNavigation;
 };
@@ -76,38 +65,42 @@ type UseReportNavigationReturn = {
     onBackButtonPress: (prioritizeBackTo?: boolean) => void;
     isNavigatingToDeletedAction: boolean;
     setIsNavigatingToDeletedAction: (value: boolean) => void;
+    firstRenderRef: React.MutableRefObject<boolean>;
 };
 
-function useReportNavigation({
-    reportIDFromRoute,
-    reportActionIDFromRoute,
-    report,
-    prevReport,
-    userLeavingStatus,
-    prevUserLeavingStatus,
-    deletedParentAction,
-    prevDeletedParentAction,
-    isTopMostReportId,
-    reportID,
-    reportMetadata,
-    isLoadingApp,
-    isOptimisticDelete,
-    linkedAction,
-    sortedAllReportActions,
-    reportActions,
-    isLinkingToMessage,
-    currentUserAccountID,
-    isReportArchived,
-    firstRenderRef,
-    route,
-    navigation,
-}: UseReportNavigationProps): UseReportNavigationReturn {
+function useReportNavigation({reportIDFromRoute, reportActionIDFromRoute, isLinkingToMessage, route, navigation}: UseReportNavigationProps): UseReportNavigationReturn {
     const isFocused = useIsFocused();
     const {isBetaEnabled} = usePermissions();
     const {isInNarrowPaneModal} = useResponsiveLayout();
     const wasReportAccessibleRef = useRef(false);
+    const firstRenderRef = useRef(true);
     const [isNavigatingToDeletedAction, setIsNavigatingToDeletedAction] = useState(false);
     const lastReportIDFromRoute = usePrevious(reportIDFromRoute);
+
+    // Fetch data directly using Onyx hooks
+    const [report] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${reportIDFromRoute}`, {canBeMissing: true});
+    const prevReport = usePrevious(report);
+    const [reportMetadata] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_METADATA}${reportIDFromRoute}`, {canBeMissing: true});
+    const [userLeavingStatus] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_USER_IS_LEAVING_ROOM}${reportIDFromRoute}`, {canBeMissing: true});
+    const prevUserLeavingStatus = usePrevious(userLeavingStatus);
+    const [isLoadingApp] = useOnyx(ONYXKEYS.IS_LOADING_APP);
+    const currentUserPersonalDetails = useCurrentUserPersonalDetails();
+    const currentUserAccountID = currentUserPersonalDetails?.accountID ?? -1;
+    const isReportArchived = useReportIsArchived(report?.reportID);
+
+    // Get report actions and linked action
+    const {reportActions: unfilteredReportActions, linkedAction, sortedAllReportActions} = usePaginatedReportActions(report?.reportID, reportActionIDFromRoute);
+    const reportActions = useMemo(() => getFilteredReportActionsForReportView(unfilteredReportActions), [unfilteredReportActions]);
+
+    // Derived state
+    const reportID = report?.reportID;
+    const isOptimisticDelete = report?.statusNum === CONST.REPORT.STATUS_NUM.CLOSED;
+    const deletedParentAction = !report?.parentReportActionID;
+    const prevDeletedParentAction = usePrevious(deletedParentAction);
+
+    // Get current report ID for comparison
+    const currentReportIDValue = useCurrentReportID();
+    const isTopMostReportId = currentReportIDValue?.currentReportID === reportIDFromRoute;
 
     // Set initial reportID from last accessed report if none provided
     useEffect(() => {
@@ -303,6 +296,7 @@ function useReportNavigation({
         onBackButtonPress,
         isNavigatingToDeletedAction,
         setIsNavigatingToDeletedAction,
+        firstRenderRef,
     };
 }
 
