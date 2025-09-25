@@ -132,15 +132,18 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     });
 
     const chatWithAccountManagerText = useMemo(() => {
-        if (accountManagerReportID) {
-            const participants = getParticipantsAccountIDsForDisplay(accountManagerReport, false, true);
-            const participantPersonalDetails = getPersonalDetailsForAccountIDs([participants?.at(0) ?? -1], personalDetails);
-            const participantPersonalDetail = Object.values(participantPersonalDetails).at(0);
-            const displayName = getDisplayNameOrDefault(participantPersonalDetail);
-            const login = participantPersonalDetail?.login;
-            if (displayName && login) {
-                return translate('common.chatWithAccountManager', {accountManagerDisplayName: `${displayName} (${login})`});
-            }
+        if (!accountManagerReportID) {
+            return '';
+        }
+        
+        const participants = getParticipantsAccountIDsForDisplay(accountManagerReport, false, true);
+        const participantPersonalDetails = getPersonalDetailsForAccountIDs([participants?.at(0) ?? -1], personalDetails);
+        const participantPersonalDetail = Object.values(participantPersonalDetails).at(0);
+        const displayName = getDisplayNameOrDefault(participantPersonalDetail);
+        const login = participantPersonalDetail?.login;
+        
+        if (displayName && login) {
+            return translate('common.chatWithAccountManager', {accountManagerDisplayName: `${displayName} (${login})`});
         }
         return '';
     }, [accountManagerReportID, accountManagerReport, personalDetails, translate]);
@@ -159,20 +162,40 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const isLinkedMessagePageReady = isLinkedMessageAvailable && (reportActions.length - indexOfLinkedMessage >= CONST.REPORT.MIN_INITIAL_REPORT_ACTION_COUNT || doesCreatedActionExists());
     const reportTransactionIDs = useMemo(() => visibleTransactions?.map((transaction) => transaction.transactionID), [visibleTransactions]);
 
-    const transactionThreadReportID = getOneTransactionThreadReportID(report, chatReport, reportActions ?? [], isOffline, reportTransactionIDs);
+    const transactionThreadReportID = useMemo(() => 
+        getOneTransactionThreadReportID(report, chatReport, reportActions ?? [], isOffline, reportTransactionIDs),
+        [report, chatReport, reportActions, isOffline, reportTransactionIDs]
+    );
     const [transactionThreadReportActions = getEmptyObject<OnyxTypes.ReportActions>()] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${transactionThreadReportID}`, {
         canBeMissing: true,
     });
-    const combinedReportActions = getCombinedReportActions(reportActions, transactionThreadReportID ?? null, Object.values(transactionThreadReportActions));
+    const combinedReportActions = useMemo(() => 
+        getCombinedReportActions(reportActions, transactionThreadReportID ?? null, Object.values(transactionThreadReportActions)),
+        [reportActions, transactionThreadReportID, transactionThreadReportActions]
+    );
     const isSentMoneyReport = useMemo(() => reportActions.some((action) => isSentMoneyReportAction(action)), [reportActions]);
-    const lastReportAction = [...combinedReportActions, parentReportAction].find((action) => canEditReportAction(action) && !isMoneyRequestAction(action));
+    const lastReportAction = useMemo(() => 
+        [...combinedReportActions, parentReportAction].find((action) => canEditReportAction(action) && !isMoneyRequestAction(action)),
+        [combinedReportActions, parentReportAction]
+    );
     const isTransactionThreadView = isReportTransactionThread(report);
     const isMoneyRequestOrInvoiceReport = isMoneyRequestReport(report) || isInvoiceReport(report);
     // Prevent the empty state flash by ensuring transaction data is fully loaded before deciding which view to render
     // We need to wait for both the selector to finish AND ensure we're not in a loading state where transactions could still populate
     const shouldWaitForTransactions = shouldWaitForTransactionsUtil(report, reportTransactions, reportMetadata);
 
-    const newTransactions = useNewTransactions(reportMetadata?.hasOnceLoadedReportActions, reportTransactions);
+    // If true reports that are considered MoneyRequest | InvoiceReport will get the new report table view
+    const shouldDisplayMoneyRequestActionsList = useMemo(() => 
+        isMoneyRequestOrInvoiceReport && shouldDisplayReportTableView(report, visibleTransactions ?? []),
+        [isMoneyRequestOrInvoiceReport, report, visibleTransactions]
+    );
+
+    // Pass shouldDisplayMoneyRequestActionsList to hook for internal optimization
+    const newTransactions = useNewTransactions(
+        reportMetadata?.hasOnceLoadedReportActions, 
+        reportTransactions, 
+        shouldDisplayMoneyRequestActionsList
+    );
 
     useReportFetching({
         reportIDFromRoute,
@@ -206,39 +229,53 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         hideEmojiPicker(true);
     }, [prevIsFocused, isFocused]);
 
-    let headerView = (
-        <HeaderView
-            reportID={reportIDFromRoute}
-            onNavigationMenuButtonClicked={onBackButtonPress}
-            report={report}
-            parentReportAction={parentReportAction}
-            shouldUseNarrowLayout={shouldUseNarrowLayout}
-        />
-    );
+    const headerView = useMemo(() => {
+        if (isMoneyRequestOrInvoiceReport) {
+            return (
+                <MoneyReportHeader
+                    report={report}
+                    policy={policy}
+                    transactionThreadReportID={transactionThreadReportID}
+                    isLoadingInitialReportActions={reportMetadata.isLoadingInitialReportActions}
+                    reportActions={reportActions}
+                    onBackButtonPress={onBackButtonPress}
+                />
+            );
+        }
 
-    if (isTransactionThreadView) {
-        headerView = (
-            <MoneyRequestHeader
+        if (isTransactionThreadView) {
+            return (
+                <MoneyRequestHeader
+                    report={report}
+                    policy={policy}
+                    parentReportAction={parentReportAction}
+                    onBackButtonPress={onBackButtonPress}
+                />
+            );
+        }
+
+        return (
+            <HeaderView
+                reportID={reportIDFromRoute}
+                onNavigationMenuButtonClicked={onBackButtonPress}
                 report={report}
-                policy={policy}
                 parentReportAction={parentReportAction}
-                onBackButtonPress={onBackButtonPress}
+                shouldUseNarrowLayout={shouldUseNarrowLayout}
             />
         );
-    }
-
-    if (isMoneyRequestOrInvoiceReport) {
-        headerView = (
-            <MoneyReportHeader
-                report={report}
-                policy={policy}
-                transactionThreadReportID={transactionThreadReportID}
-                isLoadingInitialReportActions={reportMetadata.isLoadingInitialReportActions}
-                reportActions={reportActions}
-                onBackButtonPress={onBackButtonPress}
-            />
-        );
-    }
+    }, [
+        isMoneyRequestOrInvoiceReport,
+        isTransactionThreadView,
+        report,
+        policy,
+        transactionThreadReportID,
+        reportMetadata.isLoadingInitialReportActions,
+        reportActions,
+        onBackButtonPress,
+        parentReportAction,
+        reportIDFromRoute,
+        shouldUseNarrowLayout,
+    ]);
 
     useEffect(() => {
         if (!transactionThreadReportID || !route?.params?.reportActionID || !isOneTransactionThread(childReport, report, linkedAction)) {
@@ -253,17 +290,21 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const lastReportActionIDFromRoute = usePrevious(!firstRender ? reportActionIDFromRoute : undefined);
     const [deleteTransactionNavigateBackUrl] = useOnyx(ONYXKEYS.NVP_DELETE_TRANSACTION_NAVIGATE_BACK_URL, {canBeMissing: true});
 
-    useEffect(() => {
-        if (!isFocused || !deleteTransactionNavigateBackUrl) {
-            return;
-        }
-        // Clear the URL after all interactions are processed to ensure all updates are completed before hiding the skeleton
+    const clearDeleteTransactionUrl = useCallback(() => {
         InteractionManager.runAfterInteractions(() => {
             requestAnimationFrame(() => {
                 clearDeleteTransactionNavigateBackUrl();
             });
         });
-    }, [isFocused, deleteTransactionNavigateBackUrl]);
+    }, []);
+
+    useEffect(() => {
+        if (!isFocused || !deleteTransactionNavigateBackUrl) {
+            return;
+        }
+        // Clear the URL after all interactions are processed to ensure all updates are completed before hiding the skeleton
+        clearDeleteTransactionUrl();
+    }, [isFocused, deleteTransactionNavigateBackUrl, clearDeleteTransactionUrl]);
 
     const dismissBanner = useCallback(() => {
         setIsBannerVisible(false);
@@ -273,7 +314,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         Navigation.navigate(ROUTES.REPORT_WITH_ID.getRoute(accountManagerReportID));
     }, [accountManagerReportID]);
 
-    const actionListValue = useMemo((): ActionListContextType => ({flatListRef, scrollPosition, setScrollPosition}), [flatListRef, scrollPosition, setScrollPosition]);
+    const actionListValue = useMemo((): ActionListContextType => ({flatListRef, scrollPosition, setScrollPosition}), [scrollPosition]);
 
     const lastRoute = usePrevious(route);
 
@@ -291,8 +332,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         return null;
     }
 
-    // If true reports that are considered MoneyRequest | InvoiceReport will get the new report table view
-    const shouldDisplayMoneyRequestActionsList = isMoneyRequestOrInvoiceReport && shouldDisplayReportTableView(report, visibleTransactions ?? []);
 
     return (
         <ActionListContext.Provider value={actionListValue}>

@@ -7,7 +7,7 @@ import usePrevious from './usePrevious';
  * This hook returns new transactions that have been added since the last transactions update.
  * This hook should be used only in the context of highlighting the new transactions on the Report table view.
  */
-function useNewTransactions(hasOnceLoadedReportActions: boolean | undefined, transactions: Transaction[] | undefined) {
+function useNewTransactions(hasOnceLoadedReportActions: boolean | undefined, transactions: Transaction[] | undefined, shouldCalculate = true) {
     // If we haven't loaded report yet we set previous transactions to undefined.
     const prevTransactions = usePrevious(hasOnceLoadedReportActions ? transactions : undefined);
 
@@ -15,6 +15,11 @@ function useNewTransactions(hasOnceLoadedReportActions: boolean | undefined, tra
     const skipFirstTransactionsChange = useRef(!hasOnceLoadedReportActions);
 
     const newTransactions = useMemo(() => {
+        // Early return if calculation is not needed (performance optimization)
+        if (!shouldCalculate) {
+            return CONST.EMPTY_ARRAY as unknown as Transaction[];
+        }
+        
         if (transactions === undefined || prevTransactions === undefined || transactions.length <= prevTransactions.length) {
             return CONST.EMPTY_ARRAY as unknown as Transaction[];
         }
@@ -26,7 +31,7 @@ function useNewTransactions(hasOnceLoadedReportActions: boolean | undefined, tra
         // Depending only on transactions is enough because prevTransactions is a helper object.
         // eslint-disable-next-line react-compiler/react-compiler
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [transactions]);
+    }, [transactions, shouldCalculate]);
 
     // In case when we have loaded the report, but there were no transactions in it, then we need to explicitly set skipFirstTransactionsChange to false, as it will be not set in the useMemo above.
     useEffect(() => {
