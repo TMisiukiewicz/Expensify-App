@@ -25,6 +25,7 @@ import useOnyx from '@hooks/useOnyx';
 import usePaginatedReportActions from '@hooks/usePaginatedReportActions';
 import usePrevious from '@hooks/usePrevious';
 import useReportData from '@hooks/useReportData';
+import useReportFetching from '@hooks/useReportFetching';
 import useReportIsArchived from '@hooks/useReportIsArchived';
 import useReportNavigation from '@hooks/useReportNavigation';
 import useResponsiveLayout from '@hooks/useResponsiveLayout';
@@ -41,7 +42,6 @@ import {getDisplayNameOrDefault} from '@libs/PersonalDetailsUtils';
 import {
     getCombinedReportActions,
     getFilteredReportActionsForReportView,
-    getIOUActionForReportID,
     getOneTransactionThreadReportID,
     isCreatedAction,
     isMoneyRequestAction,
@@ -51,29 +51,16 @@ import {
     canEditReportAction,
     getParticipantsAccountIDsForDisplay,
     getReportOfflinePendingActionAndErrors,
-    getReportTransactions,
-    isChatThread,
     isConciergeChatReport,
-    isHiddenForCurrentUser,
     isInvoiceReport,
     isMoneyRequestReport,
     isOneTransactionThread,
-    isPolicyExpenseChat,
     isReportTransactionThread,
-    isTaskReport,
     isValidReportIDFromPath,
 } from '@libs/ReportUtils';
 import type {ReportsSplitNavigatorParamList} from '@navigation/types';
 import {setShouldShowComposeInput} from '@userActions/Composer';
-import {
-    clearDeleteTransactionNavigateBackUrl,
-    createTransactionThreadReport,
-    openReport,
-    readNewestAction,
-    subscribeToReportLeavingEvents,
-    unsubscribeFromLeavingRoomReportChannel,
-    updateLastVisitTime,
-} from '@userActions/Report';
+import {clearDeleteTransactionNavigateBackUrl, subscribeToReportLeavingEvents, unsubscribeFromLeavingRoomReportChannel, updateLastVisitTime} from '@userActions/Report';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import ROUTES from '@src/ROUTES';
@@ -131,8 +118,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
 
     const isAnonymousUser = useIsAnonymousUser();
     const prevDeletedParentAction = usePrevious(deletedParentAction);
-    const prevIsLoadingReportData = usePrevious(isLoadingReportData);
-    const prevIsAnonymousUser = useRef(false);
     const prevReport = usePrevious(report);
     const prevUserLeavingStatus = usePrevious(userLeavingStatus);
     const isTopMostReportId = currentReportIDValue?.currentReportID === reportIDFromRoute;
@@ -225,6 +210,25 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
 
     const newTransactions = useNewTransactions(reportMetadata?.hasOnceLoadedReportActions, reportTransactions);
 
+    useReportFetching({
+        reportIDFromRoute,
+        reportActionIDFromRoute,
+        report,
+        reportMetadata,
+        isOffline,
+        reportID,
+        isAnonymousUser,
+        isLoadingReportData,
+        transactionThreadReportID,
+        transactionThreadReport,
+        reportActions,
+        isTransactionThreadView,
+        isLinkedMessagePageReady,
+        firstRenderRef,
+        lastReportIDFromRoute,
+        route,
+    });
+
     useEffect(() => {
         if (!prevIsFocused || isFocused) {
             return;
@@ -291,65 +295,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         });
     }, [isFocused, deleteTransactionNavigateBackUrl]);
 
-    const createOneTransactionThreadReport = useCallback(() => {
-        const currentReportTransaction = getReportTransactions(reportID).filter((transaction) => transaction.pendingAction !== CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE);
-        const oneTransactionID = currentReportTransaction.at(0)?.transactionID;
-        const iouAction = getIOUActionForReportID(reportID, oneTransactionID);
-        createTransactionThreadReport(report, iouAction);
-    }, [report, reportID]);
-
-    const fetchReport = useCallback(() => {
-        if (reportMetadata.isOptimisticReport && report?.type === CONST.REPORT.TYPE.CHAT && !isPolicyExpenseChat(report)) {
-            return;
-        }
-
-        if (report?.errorFields?.notFound && isOffline) {
-            return;
-        }
-
-        // If there is one transaction thread that has not yet been created, we should create it.
-        if (transactionThreadReportID === CONST.FAKE_REPORT_ID && !transactionThreadReport) {
-            createOneTransactionThreadReport();
-            return;
-        }
-
-        openReport(reportIDFromRoute, reportActionIDFromRoute);
-    }, [
-        reportMetadata.isOptimisticReport,
-        report,
-        isOffline,
-        transactionThreadReportID,
-        transactionThreadReport,
-        reportIDFromRoute,
-        reportActionIDFromRoute,
-        createOneTransactionThreadReport,
-    ]);
-
-    useEffect(() => {
-        if (!isAnonymousUser) {
-            return;
-        }
-        prevIsAnonymousUser.current = true;
-    }, [isAnonymousUser]);
-
-    useEffect(() => {
-        if (isLoadingReportData || !prevIsLoadingReportData || !prevIsAnonymousUser.current || isAnonymousUser) {
-            return;
-        }
-        // Re-fetch public report data after user signs in and OpenApp API is called to
-        // avoid reportActions data being empty for public rooms.
-        fetchReport();
-    }, [isLoadingReportData, prevIsLoadingReportData, prevIsAnonymousUser, isAnonymousUser, fetchReport]);
-
-    const prevTransactionThreadReportID = usePrevious(transactionThreadReportID);
-    useEffect(() => {
-        if (!!prevTransactionThreadReportID || !transactionThreadReportID) {
-            return;
-        }
-
-        fetchReport();
-    }, [fetchReport, prevTransactionThreadReportID, transactionThreadReportID]);
-
     useEffect(() => {
         if (!reportID || !isFocused) {
             return;
@@ -409,58 +354,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     }, []);
 
     useEffect(() => {
-        // This function is triggered when a user clicks on a link to navigate to a report.
-        // For each link click, we retrieve the report data again, even though it may already be cached.
-        // There should be only one openReport execution per page start or navigating
-        fetchReport();
-        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/exhaustive-deps
-    }, [route, isLinkedMessagePageReady, reportActionIDFromRoute]);
-
-    const prevReportActions = usePrevious(reportActions);
-    useEffect(() => {
-        // This function is only triggered when a user is invited to a room after opening the link.
-        // When a user opens a room they are not a member of, and the admin then invites them, only the INVITE_TO_ROOM action is available, so the background will be empty and room description is not available.
-        // See https://github.com/Expensify/App/issues/57769 for more details
-        if (prevReportActions.length !== 0 || reportActions.length !== 1 || reportActions.at(0)?.actionName !== CONST.REPORT.ACTIONS.TYPE.ROOM_CHANGE_LOG.INVITE_TO_ROOM) {
-            return;
-        }
-        fetchReport();
-    }, [prevReportActions, reportActions, fetchReport]);
-
-    // If a user has chosen to leave a thread, and then returns to it (e.g. with the back button), we need to call `openReport` again in order to allow the user to rejoin and to receive real-time updates
-    useEffect(() => {
-        if (!shouldUseNarrowLayout || !isFocused || prevIsFocused || !isChatThread(report) || !isHiddenForCurrentUser(report) || isTransactionThreadView) {
-            return;
-        }
-        openReport(reportID);
-
-        // We don't want to run this useEffect every time `report` is changed
-        // Excluding shouldUseNarrowLayout from the dependency list to prevent re-triggering on screen resize events.
-        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/exhaustive-deps
-    }, [prevIsFocused, report?.participants, isFocused, isTransactionThreadView, reportID]);
-
-    useEffect(() => {
-        // We don't want this effect to run on the first render.
-        if (firstRenderRef.current) {
-            firstRenderRef.current = false;
-            return;
-        }
-
-        const onyxReportID = report?.reportID;
-
-        // If you already have a report open and are deeplinking to a new report on native,
-        // the ReportScreen never actually unmounts and the reportID in the route also doesn't change.
-        // Therefore, we need to compare if the existing reportID is the same as the one in the route
-        // before deciding that we shouldn't call OpenReport.
-        if (reportIDFromRoute === lastReportIDFromRoute && (!onyxReportID || onyxReportID === reportIDFromRoute)) {
-            return;
-        }
-
-        setShouldShowComposeInput(true);
-        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/exhaustive-deps
-    }, [route, report, reportIDFromRoute, lastReportIDFromRoute]);
-
-    useEffect(() => {
         if (!isValidReportIDFromPath(reportIDFromRoute)) {
             return;
         }
@@ -496,14 +389,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
             setIsLinkingToMessage(false);
         });
     }, [reportMetadata?.isLoadingInitialReportActions]);
-
-    useEffect(() => {
-        if (!!report?.lastReadTime || !isTaskReport(report)) {
-            return;
-        }
-        // After creating the task report then navigating to task detail we don't have any report actions and the last read time is empty so We need to update the initial last read time when opening the task report detail.
-        readNewestAction(report?.reportID);
-    }, [report]);
 
     const lastRoute = usePrevious(route);
 
