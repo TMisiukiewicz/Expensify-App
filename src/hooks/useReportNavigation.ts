@@ -1,6 +1,6 @@
 import {useIsFocused} from '@react-navigation/native';
 import type {NavigationProp, RouteProp} from '@react-navigation/native';
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import type {OnyxEntry} from 'react-native-onyx';
 import Log from '@libs/Log';
 import Navigation, {navigationRef} from '@libs/Navigation/Navigation';
@@ -65,17 +65,17 @@ type UseReportNavigationReturn = {
     onBackButtonPress: (prioritizeBackTo?: boolean) => void;
     isNavigatingToDeletedAction: boolean;
     setIsNavigatingToDeletedAction: (value: boolean) => void;
-    firstRenderRef: React.MutableRefObject<boolean>;
+    firstRender: boolean;
+    setFirstRender: (value: boolean) => void;
 };
 
 function useReportNavigation({reportIDFromRoute, reportActionIDFromRoute, isLinkingToMessage, route, navigation}: UseReportNavigationProps): UseReportNavigationReturn {
     const isFocused = useIsFocused();
     const {isBetaEnabled} = usePermissions();
     const {isInNarrowPaneModal} = useResponsiveLayout();
-    const wasReportAccessibleRef = useRef(false);
-    const firstRenderRef = useRef(true);
+    const [wasReportAccessible, setWasReportAccessible] = useState(false);
+    const [firstRender, setFirstRender] = useState(true);
     const [isNavigatingToDeletedAction, setIsNavigatingToDeletedAction] = useState(false);
-    const lastReportIDFromRoute = usePrevious(reportIDFromRoute);
 
     // Fetch data directly using Onyx hooks
     const [report] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${reportIDFromRoute}`, {canBeMissing: true});
@@ -128,12 +128,8 @@ function useReportNavigation({reportIDFromRoute, reportActionIDFromRoute, isLink
 
     // Track report accessibility
     useEffect(() => {
-        if (!report?.reportID) {
-            wasReportAccessibleRef.current = false;
-            return;
-        }
-        wasReportAccessibleRef.current = true;
-    }, [report]);
+        setWasReportAccessible(!!report?.reportID);
+    }, [report?.reportID]);
 
     // Handle back button navigation logic
     const backTo = route?.params?.backTo as string;
@@ -199,8 +195,7 @@ function useReportNavigation({reportIDFromRoute, reportActionIDFromRoute, isLink
         }
 
         // Check if report was never accessible and other conditions
-        // eslint-disable-next-line react-compiler/react-compiler
-        if (!wasReportAccessibleRef.current && !firstRenderRef.current && !reportID && !isOptimisticDelete && !reportMetadata?.isLoadingInitialReportActions && !userLeavingStatus) {
+        if (!wasReportAccessible && !firstRender && !reportID && !isOptimisticDelete && !reportMetadata?.isLoadingInitialReportActions && !userLeavingStatus) {
             return true;
         }
 
@@ -210,34 +205,43 @@ function useReportNavigation({reportIDFromRoute, reportActionIDFromRoute, isLink
         route.params?.reportID,
         shouldShowNotFoundLinkedAction,
         isLoadingApp,
-        firstRenderRef,
+        firstRender,
         reportID,
         isOptimisticDelete,
         reportMetadata?.isLoadingInitialReportActions,
         userLeavingStatus,
+        wasReportAccessible,
     ]);
 
-    // Handle report removal/closure navigation
-    useEffect(() => {
+    // Compute navigation conditions
+    const navigationConditions = useMemo(() => {
         const onyxReportID = report?.reportID;
         const prevOnyxReportID = prevReport?.reportID;
         const wasReportRemoved = !!prevOnyxReportID && prevOnyxReportID === reportIDFromRoute && !onyxReportID;
 
-        // Check various report closure/removal conditions
-        const isRemovalExpectedForReportType =
-            isEmpty(report) && (isMoneyRequest(prevReport) || isMoneyRequestReport(prevReport) || isPolicyExpenseChat(prevReport) || isGroupChat(prevReport));
-        const didReportClose = wasReportRemoved && prevReport?.statusNum === CONST.REPORT.STATUS_NUM.OPEN && report?.statusNum === CONST.REPORT.STATUS_NUM.CLOSED;
-        const isTopLevelPolicyRoomWithNoStatus = !report?.statusNum && !prevReport?.parentReportID && prevReport?.chatType === CONST.REPORT.CHAT_TYPE.POLICY_ROOM;
-        const isClosedTopLevelPolicyRoom = wasReportRemoved && prevReport?.statusNum === CONST.REPORT.STATUS_NUM.OPEN && isTopLevelPolicyRoomWithNoStatus;
+        return {
+            wasReportRemoved,
+            isRemovalExpectedForReportType: isEmpty(report) && (isMoneyRequest(prevReport) || isMoneyRequestReport(prevReport) || isPolicyExpenseChat(prevReport) || isGroupChat(prevReport)),
+            didReportClose: wasReportRemoved && prevReport?.statusNum === CONST.REPORT.STATUS_NUM.OPEN && report?.statusNum === CONST.REPORT.STATUS_NUM.CLOSED,
+            isTopLevelPolicyRoomWithNoStatus: !report?.statusNum && !prevReport?.parentReportID && prevReport?.chatType === CONST.REPORT.CHAT_TYPE.POLICY_ROOM,
+            isClosedTopLevelPolicyRoom: wasReportRemoved && prevReport?.statusNum === CONST.REPORT.STATUS_NUM.OPEN && (!report?.statusNum && !prevReport?.parentReportID && prevReport?.chatType === CONST.REPORT.CHAT_TYPE.POLICY_ROOM),
+            userLeftRoom: !prevUserLeavingStatus && !!userLeavingStatus,
+            parentActionRestored: prevDeletedParentAction && !deletedParentAction,
+        };
+    }, [report, prevReport, reportIDFromRoute, userLeavingStatus, prevUserLeavingStatus, deletedParentAction, prevDeletedParentAction]);
+
+    // Handle report removal/closure navigation
+    useEffect(() => {
+        const {
+            userLeftRoom,
+            didReportClose,
+            isRemovalExpectedForReportType,
+            isClosedTopLevelPolicyRoom,
+            parentActionRestored,
+        } = navigationConditions;
 
         // Navigate to appropriate screen when report is removed/closed
-        if (
-            (!prevUserLeavingStatus && !!userLeavingStatus) ||
-            didReportClose ||
-            isRemovalExpectedForReportType ||
-            isClosedTopLevelPolicyRoom ||
-            (prevDeletedParentAction && !deletedParentAction)
-        ) {
+        if (userLeftRoom || didReportClose || isRemovalExpectedForReportType || isClosedTopLevelPolicyRoom || parentActionRestored) {
             const currentRoute = navigationRef.getCurrentRoute();
             const isReportDetailOpenInRHP =
                 isTopMostReportId &&
@@ -254,6 +258,7 @@ function useReportNavigation({reportIDFromRoute, reportActionIDFromRoute, isLink
 
             Navigation.dismissModal();
 
+            const prevOnyxReportID = prevReport?.reportID;
             if (Navigation.getTopmostReportId() === prevOnyxReportID) {
                 Navigation.isNavigationReady().then(() => {
                     Navigation.popToSidebar();
@@ -277,26 +282,15 @@ function useReportNavigation({reportIDFromRoute, reportActionIDFromRoute, isLink
                 navigateToConciergeChat();
             });
         }
-    }, [
-        report,
-        prevReport,
-        reportIDFromRoute,
-        lastReportIDFromRoute,
-        userLeavingStatus,
-        prevUserLeavingStatus,
-        deletedParentAction,
-        prevDeletedParentAction,
-        isFocused,
-        isTopMostReportId,
-        isInNarrowPaneModal,
-    ]);
+    }, [navigationConditions, isFocused, isTopMostReportId, isInNarrowPaneModal, reportIDFromRoute, prevReport]);
 
     return {
         shouldShowNotFoundPage,
         onBackButtonPress,
         isNavigatingToDeletedAction,
         setIsNavigatingToDeletedAction,
-        firstRenderRef,
+        firstRender,
+        setFirstRender,
     };
 }
 

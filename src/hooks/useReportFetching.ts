@@ -1,6 +1,6 @@
 import type {RouteProp} from '@react-navigation/native';
 import {useIsFocused} from '@react-navigation/native';
-import {useCallback, useEffect, useRef} from 'react';
+import {useCallback, useEffect} from 'react';
 import {getIOUActionForReportID} from '@libs/ReportActionsUtils';
 import {getReportTransactions, isChatThread, isHiddenForCurrentUser, isPolicyExpenseChat, isReportTransactionThread, isTaskReport} from '@libs/ReportUtils';
 import type {ReportsSplitNavigatorParamList} from '@navigation/types';
@@ -29,13 +29,11 @@ type UseReportFetchingProps = {
     reportActions: OnyxTypes.ReportAction[];
     /** Whether the message page is ready for linking */
     isLinkedMessagePageReady: boolean;
-    /** First render ref to avoid initial effects */
-    firstRenderRef: React.MutableRefObject<boolean>;
     /** React Navigation route object */
     route: ReportScreenRoute;
 };
 
-function useReportFetching({reportIDFromRoute, reportActionIDFromRoute, transactionThreadReportID, reportActions, isLinkedMessagePageReady, firstRenderRef, route}: UseReportFetchingProps) {
+function useReportFetching({reportIDFromRoute, reportActionIDFromRoute, transactionThreadReportID, reportActions, isLinkedMessagePageReady, route}: UseReportFetchingProps) {
     const isFocused = useIsFocused();
     const prevIsFocused = usePrevious(isFocused);
     const {shouldUseNarrowLayout} = useResponsiveLayout();
@@ -51,8 +49,8 @@ function useReportFetching({reportIDFromRoute, reportActionIDFromRoute, transact
     const isTransactionThreadView = isReportTransactionThread(report);
     const lastReportIDFromRoute = usePrevious(reportIDFromRoute);
 
-    // Track anonymous user state
-    const prevIsAnonymousUser = useRef(false);
+    // Previous values for comparison
+    const prevIsAnonymousUser = usePrevious(isAnonymousUser);
     const prevIsLoadingReportData = usePrevious(isLoadingReportData);
     const prevTransactionThreadReportID = usePrevious(transactionThreadReportID);
     const prevReportActions = usePrevious(reportActions);
@@ -93,34 +91,38 @@ function useReportFetching({reportIDFromRoute, reportActionIDFromRoute, transact
         createOneTransactionThreadReport,
     ]);
 
-    // Track anonymous user state
-    useEffect(() => {
-        if (!isAnonymousUser) {
-            return;
-        }
-        prevIsAnonymousUser.current = true;
-    }, [isAnonymousUser]);
-
     // Re-fetch data after anonymous user signs in
     useEffect(() => {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        if (isLoadingReportData || !prevIsLoadingReportData || !prevIsAnonymousUser.current || isAnonymousUser) {
-            return;
+        // Only fetch if:
+        // 1. Loading finished (isLoadingReportData false, was previously true)  
+        // 2. User was anonymous but is no longer anonymous
+        const wasLoadingAndFinished = !isLoadingReportData && prevIsLoadingReportData;
+        const wasAnonymousAndSignedIn = prevIsAnonymousUser && !isAnonymousUser;
+        
+        if (wasLoadingAndFinished && wasAnonymousAndSignedIn) {
+            // Re-fetch public report data after user signs in and OpenApp API is called to
+            // avoid reportActions data being empty for public rooms.
+            fetchReport();
         }
-        // Re-fetch public report data after user signs in and OpenApp API is called to
-        // avoid reportActions data being empty for public rooms.
-        fetchReport();
-    }, [isLoadingReportData, prevIsLoadingReportData, isAnonymousUser, fetchReport]);
+    }, [isLoadingReportData, prevIsLoadingReportData, isAnonymousUser, prevIsAnonymousUser, fetchReport]);
 
-    // Fetch report when transaction thread is created
+    // Main report fetching effect - handles multiple trigger conditions
     useEffect(() => {
-        if (!!prevTransactionThreadReportID || !transactionThreadReportID) {
-            return;
+        // Condition 1: Transaction thread was created
+        const transactionThreadCreated = !prevTransactionThreadReportID && transactionThreadReportID;
+        
+        // Condition 2: User was invited to room (specific case)
+        const wasInvitedToRoom = 
+            prevReportActions.length === 0 && 
+            reportActions.length === 1 && 
+            reportActions.at(0)?.actionName === CONST.REPORT.ACTIONS.TYPE.ROOM_CHANGE_LOG.INVITE_TO_ROOM;
+        
+        if (transactionThreadCreated || wasInvitedToRoom) {
+            fetchReport();
         }
-        fetchReport();
-    }, [fetchReport, prevTransactionThreadReportID, transactionThreadReportID]);
+    }, [prevTransactionThreadReportID, transactionThreadReportID, prevReportActions, reportActions, fetchReport]);
 
-    // Main report fetching trigger - when route or linking state changes
+    // Route-based report fetching - when route or linking state changes
     useEffect(() => {
         // This function is triggered when a user clicks on a link to navigate to a report.
         // For each link click, we retrieve the report data again, even though it may already be cached.
@@ -128,17 +130,6 @@ function useReportFetching({reportIDFromRoute, reportActionIDFromRoute, transact
         fetchReport();
         // eslint-disable-next-line react-compiler/react-compiler, react-hooks/exhaustive-deps
     }, [route, isLinkedMessagePageReady, reportActionIDFromRoute]);
-
-    // Fetch report when user is invited to a room
-    useEffect(() => {
-        // This function is only triggered when a user is invited to a room after opening the link.
-        // When a user opens a room they are not a member of, and the admin then invites them, only the INVITE_TO_ROOM action is available, so the background will be empty and room description is not available.
-        // See https://github.com/Expensify/App/issues/57769 for more details
-        if (prevReportActions.length !== 0 || reportActions.length !== 1 || reportActions.at(0)?.actionName !== CONST.REPORT.ACTIONS.TYPE.ROOM_CHANGE_LOG.INVITE_TO_ROOM) {
-            return;
-        }
-        fetchReport();
-    }, [prevReportActions, reportActions, fetchReport]);
 
     // Re-open report when user returns to a thread they left
     useEffect(() => {
@@ -154,26 +145,15 @@ function useReportFetching({reportIDFromRoute, reportActionIDFromRoute, transact
 
     // Handle route changes and compose input
     useEffect(() => {
-        // We don't want this effect to run on the first render.
-        if (firstRenderRef.current) {
-            // eslint-disable-next-line react-compiler/react-compiler, no-param-reassign
-            firstRenderRef.current = false;
-            return;
-        }
-
         const onyxReportID = report?.reportID;
+        const routeChanged = reportIDFromRoute !== lastReportIDFromRoute;
+        const reportMismatch = onyxReportID && onyxReportID !== reportIDFromRoute;
 
-        // If you already have a report open and are deeplinking to a new report on native,
-        // the ReportScreen never actually unmounts and the reportID in the route also doesn't change.
-        // Therefore, we need to compare if the existing reportID is the same as the one in the route
-        // before deciding that we shouldn't call OpenReport.
-        if (reportIDFromRoute === lastReportIDFromRoute && (!onyxReportID || onyxReportID === reportIDFromRoute)) {
-            return;
+        // Set compose input to visible when navigating between different reports
+        if (routeChanged || reportMismatch) {
+            setShouldShowComposeInput(true);
         }
-
-        setShouldShowComposeInput(true);
-        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/exhaustive-deps
-    }, [route, report, reportIDFromRoute, lastReportIDFromRoute]);
+    }, [report?.reportID, reportIDFromRoute, lastReportIDFromRoute]);
 
     // Initialize task report read time
     useEffect(() => {

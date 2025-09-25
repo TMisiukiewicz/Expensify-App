@@ -123,7 +123,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const isReportArchived = useReportIsArchived(report?.reportID);
 
     // Custom hook to handle all navigation logic
-    const {shouldShowNotFoundPage, onBackButtonPress, firstRenderRef} = useReportNavigation({
+    const {shouldShowNotFoundPage, onBackButtonPress, firstRender} = useReportNavigation({
         reportIDFromRoute,
         reportActionIDFromRoute,
         isLinkingToMessage,
@@ -180,7 +180,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         transactionThreadReportID,
         reportActions,
         isLinkedMessagePageReady,
-        firstRenderRef,
         route,
     });
 
@@ -251,7 +250,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const {isEditingDisabled, isCurrentReportLoadedFromOnyx} = useIsReportReadyToDisplay(report, reportIDFromRoute, isReportArchived);
 
     // eslint-disable-next-line react-compiler/react-compiler
-    const lastReportActionIDFromRoute = usePrevious(!firstRenderRef.current ? reportActionIDFromRoute : undefined);
+    const lastReportActionIDFromRoute = usePrevious(!firstRender ? reportActionIDFromRoute : undefined);
     const [deleteTransactionNavigateBackUrl] = useOnyx(ONYXKEYS.NVP_DELETE_TRANSACTION_NAVIGATE_BACK_URL, {canBeMissing: true});
 
     useEffect(() => {
