@@ -22,6 +22,7 @@ import useNewTransactions from '@hooks/useNewTransactions';
 import useOnyx from '@hooks/useOnyx';
 import usePaginatedReportActions from '@hooks/usePaginatedReportActions';
 import usePrevious from '@hooks/usePrevious';
+import useReportActions from '@hooks/useReportActions';
 import useReportData from '@hooks/useReportData';
 import useReportFetching from '@hooks/useReportFetching';
 import useReportIsArchived from '@hooks/useReportIsArchived';
@@ -39,15 +40,6 @@ import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavig
 import {getPersonalDetailsForAccountIDs} from '@libs/OptionsListUtils';
 import {getDisplayNameOrDefault} from '@libs/PersonalDetailsUtils';
 import {
-    getCombinedReportActions,
-    getFilteredReportActionsForReportView,
-    getOneTransactionThreadReportID,
-    isCreatedAction,
-    isMoneyRequestAction,
-    isSentMoneyReportAction,
-} from '@libs/ReportActionsUtils';
-import {
-    canEditReportAction,
     getParticipantsAccountIDsForDisplay,
     getReportOfflinePendingActionAndErrors,
     isConciergeChatReport,
@@ -58,12 +50,9 @@ import {
 } from '@libs/ReportUtils';
 import type {ReportsSplitNavigatorParamList} from '@navigation/types';
 import {clearDeleteTransactionNavigateBackUrl} from '@userActions/Report';
-import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import ROUTES from '@src/ROUTES';
 import type SCREENS from '@src/SCREENS';
-import type * as OnyxTypes from '@src/types/onyx';
-import {getEmptyObject} from '@src/types/utils/EmptyObject';
 import HeaderView from './HeaderView';
 import ReactionListWrapper from './ReactionListWrapper';
 import ReportActionsView from './report/ReportActionsView';
@@ -109,8 +98,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const isTopMostReportId = currentReportIDValue?.currentReportID === reportIDFromRoute;
     const [isLinkingToMessage, setIsLinkingToMessage] = useState(!!reportActionIDFromRoute);
     const {reportActions: unfilteredReportActions, linkedAction, hasNewerActions, hasOlderActions} = usePaginatedReportActions(reportID, reportActionIDFromRoute);
-    // wrapping in useMemo because this is array operation and can cause performance issues
-    const reportActions = useMemo(() => getFilteredReportActionsForReportView(unfilteredReportActions), [unfilteredReportActions]);
     const [childReport] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${linkedAction?.childReportID}`, {canBeMissing: true});
 
     const [isBannerVisible, setIsBannerVisible] = useState(true);
@@ -131,53 +118,33 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         navigation,
     });
 
+    // Custom hook to handle all report actions processing
+    const {reportActions, isLinkedMessagePageReady, transactionThreadReportID, isSentMoneyReport, lastReportAction} = useReportActions({
+        report,
+        chatReport,
+        reportActionIDFromRoute,
+        unfilteredReportActions,
+        parentReportAction,
+        visibleTransactions,
+        isOffline,
+    });
+
     const chatWithAccountManagerText = useMemo(() => {
         if (!accountManagerReportID) {
             return '';
         }
-        
+
         const participants = getParticipantsAccountIDsForDisplay(accountManagerReport, false, true);
         const participantPersonalDetails = getPersonalDetailsForAccountIDs([participants?.at(0) ?? -1], personalDetails);
         const participantPersonalDetail = Object.values(participantPersonalDetails).at(0);
         const displayName = getDisplayNameOrDefault(participantPersonalDetail);
         const login = participantPersonalDetail?.login;
-        
+
         if (displayName && login) {
             return translate('common.chatWithAccountManager', {accountManagerDisplayName: `${displayName} (${login})`});
         }
         return '';
     }, [accountManagerReportID, accountManagerReport, personalDetails, translate]);
-
-    const indexOfLinkedMessage = useMemo(
-        (): number => reportActions.findIndex((obj) => reportActionIDFromRoute && String(obj.reportActionID) === String(reportActionIDFromRoute)),
-        [reportActions, reportActionIDFromRoute],
-    );
-
-    const doesCreatedActionExists = useCallback(() => !!reportActions?.findLast((action) => isCreatedAction(action)), [reportActions]);
-    const isLinkedMessageAvailable = indexOfLinkedMessage > -1;
-
-    // The linked report actions should have at least 15 messages (counting as 1 page) above them to fill the screen.
-    // If the count is too high (equal to or exceeds the web pagination size / 50) and there are no cached messages in the report,
-    // OpenReport will be called each time the user scrolls up the report a bit, clicks on report preview, and then goes back.
-    const isLinkedMessagePageReady = isLinkedMessageAvailable && (reportActions.length - indexOfLinkedMessage >= CONST.REPORT.MIN_INITIAL_REPORT_ACTION_COUNT || doesCreatedActionExists());
-    const reportTransactionIDs = useMemo(() => visibleTransactions?.map((transaction) => transaction.transactionID), [visibleTransactions]);
-
-    const transactionThreadReportID = useMemo(() => 
-        getOneTransactionThreadReportID(report, chatReport, reportActions ?? [], isOffline, reportTransactionIDs),
-        [report, chatReport, reportActions, isOffline, reportTransactionIDs]
-    );
-    const [transactionThreadReportActions = getEmptyObject<OnyxTypes.ReportActions>()] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${transactionThreadReportID}`, {
-        canBeMissing: true,
-    });
-    const combinedReportActions = useMemo(() => 
-        getCombinedReportActions(reportActions, transactionThreadReportID ?? null, Object.values(transactionThreadReportActions)),
-        [reportActions, transactionThreadReportID, transactionThreadReportActions]
-    );
-    const isSentMoneyReport = useMemo(() => reportActions.some((action) => isSentMoneyReportAction(action)), [reportActions]);
-    const lastReportAction = useMemo(() => 
-        [...combinedReportActions, parentReportAction].find((action) => canEditReportAction(action) && !isMoneyRequestAction(action)),
-        [combinedReportActions, parentReportAction]
-    );
     const isTransactionThreadView = isReportTransactionThread(report);
     const isMoneyRequestOrInvoiceReport = isMoneyRequestReport(report) || isInvoiceReport(report);
     // Prevent the empty state flash by ensuring transaction data is fully loaded before deciding which view to render
@@ -185,17 +152,13 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const shouldWaitForTransactions = shouldWaitForTransactionsUtil(report, reportTransactions, reportMetadata);
 
     // If true reports that are considered MoneyRequest | InvoiceReport will get the new report table view
-    const shouldDisplayMoneyRequestActionsList = useMemo(() => 
-        isMoneyRequestOrInvoiceReport && shouldDisplayReportTableView(report, visibleTransactions ?? []),
-        [isMoneyRequestOrInvoiceReport, report, visibleTransactions]
+    const shouldDisplayMoneyRequestActionsList = useMemo(
+        () => isMoneyRequestOrInvoiceReport && shouldDisplayReportTableView(report, visibleTransactions ?? []),
+        [isMoneyRequestOrInvoiceReport, report, visibleTransactions],
     );
 
     // Pass shouldDisplayMoneyRequestActionsList to hook for internal optimization
-    const newTransactions = useNewTransactions(
-        reportMetadata?.hasOnceLoadedReportActions, 
-        reportTransactions, 
-        shouldDisplayMoneyRequestActionsList
-    );
+    const newTransactions = useNewTransactions(reportMetadata?.hasOnceLoadedReportActions, reportTransactions, shouldDisplayMoneyRequestActionsList);
 
     useReportFetching({
         reportIDFromRoute,
@@ -331,7 +294,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         setIsLinkingToMessage(!!reportActionIDFromRoute);
         return null;
     }
-
 
     return (
         <ActionListContext.Provider value={actionListValue}>
