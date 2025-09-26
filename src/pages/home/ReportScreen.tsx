@@ -14,9 +14,9 @@ import MoneyRequestReportActionsList from '@components/MoneyRequestReportView/Mo
 import OfflineWithFeedback from '@components/OfflineWithFeedback';
 import ReportActionsSkeletonView from '@components/ReportActionsSkeletonView';
 import ScreenWrapper from '@components/ScreenWrapper';
+import useAccountManagerBanner from '@hooks/useAccountManagerBanner';
 import useCurrentReportID from '@hooks/useCurrentReportID';
 import useIsReportReadyToDisplay from '@hooks/useIsReportReadyToDisplay';
-import useLocalize from '@hooks/useLocalize';
 import useNetwork from '@hooks/useNetwork';
 import useNewTransactions from '@hooks/useNewTransactions';
 import useOnyx from '@hooks/useOnyx';
@@ -37,21 +37,10 @@ import getNonEmptyStringOnyxID from '@libs/getNonEmptyStringOnyxID';
 import {shouldDisplayReportTableView, shouldWaitForTransactions as shouldWaitForTransactionsUtil} from '@libs/MoneyRequestReportUtils';
 import Navigation from '@libs/Navigation/Navigation';
 import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavigation/types';
-import {getPersonalDetailsForAccountIDs} from '@libs/OptionsListUtils';
-import {getDisplayNameOrDefault} from '@libs/PersonalDetailsUtils';
-import {
-    getParticipantsAccountIDsForDisplay,
-    getReportOfflinePendingActionAndErrors,
-    isConciergeChatReport,
-    isInvoiceReport,
-    isMoneyRequestReport,
-    isOneTransactionThread,
-    isReportTransactionThread,
-} from '@libs/ReportUtils';
+import {getReportOfflinePendingActionAndErrors, isInvoiceReport, isMoneyRequestReport, isOneTransactionThread, isReportTransactionThread} from '@libs/ReportUtils';
 import type {ReportsSplitNavigatorParamList} from '@navigation/types';
 import {clearDeleteTransactionNavigateBackUrl} from '@userActions/Report';
 import ONYXKEYS from '@src/ONYXKEYS';
-import ROUTES from '@src/ROUTES';
 import type SCREENS from '@src/SCREENS';
 import HeaderView from './HeaderView';
 import ReactionListWrapper from './ReactionListWrapper';
@@ -66,7 +55,6 @@ type ReportScreenProps = ReportScreenNavigationProps;
 
 function ReportScreen({route, navigation}: ReportScreenProps) {
     const styles = useThemeStyles();
-    const {translate} = useLocalize();
     const reportIDFromRoute = getNonEmptyStringOnyxID(route.params?.reportID);
     const reportActionIDFromRoute = route?.params?.reportActionID;
     const isFocused = useIsFocused();
@@ -100,7 +88,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
     const {reportActions: unfilteredReportActions, linkedAction, hasNewerActions, hasOlderActions} = usePaginatedReportActions(reportID, reportActionIDFromRoute);
     const [childReport] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${linkedAction?.childReportID}`, {canBeMissing: true});
 
-    const [isBannerVisible, setIsBannerVisible] = useState(true);
     const [scrollPosition, setScrollPosition] = useState<ScrollPosition>({});
 
     const viewportOffsetTop = useViewportOffsetTop();
@@ -129,22 +116,13 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         isOffline,
     });
 
-    const chatWithAccountManagerText = useMemo(() => {
-        if (!accountManagerReportID) {
-            return '';
-        }
-
-        const participants = getParticipantsAccountIDsForDisplay(accountManagerReport, false, true);
-        const participantPersonalDetails = getPersonalDetailsForAccountIDs([participants?.at(0) ?? -1], personalDetails);
-        const participantPersonalDetail = Object.values(participantPersonalDetails).at(0);
-        const displayName = getDisplayNameOrDefault(participantPersonalDetail);
-        const login = participantPersonalDetail?.login;
-
-        if (displayName && login) {
-            return translate('common.chatWithAccountManager', {accountManagerDisplayName: `${displayName} (${login})`});
-        }
-        return '';
-    }, [accountManagerReportID, accountManagerReport, personalDetails, translate]);
+    // Account manager banner logic
+    const {shouldShowBanner, bannerText, dismissBanner, chatWithAccountManager} = useAccountManagerBanner({
+        report,
+        accountManagerReportID,
+        accountManagerReport,
+        personalDetails,
+    });
     const isTransactionThreadView = isReportTransactionThread(report);
     const isMoneyRequestOrInvoiceReport = isMoneyRequestReport(report) || isInvoiceReport(report);
     // Prevent the empty state flash by ensuring transaction data is fully loaded before deciding which view to render
@@ -269,14 +247,6 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
         clearDeleteTransactionUrl();
     }, [isFocused, deleteTransactionNavigateBackUrl, clearDeleteTransactionUrl]);
 
-    const dismissBanner = useCallback(() => {
-        setIsBannerVisible(false);
-    }, []);
-
-    const chatWithAccountManager = useCallback(() => {
-        Navigation.navigate(ROUTES.REPORT_WITH_ID.getRoute(accountManagerReportID));
-    }, [accountManagerReportID]);
-
     const actionListValue = useMemo((): ActionListContextType => ({flatListRef, scrollPosition, setScrollPosition}), [scrollPosition]);
 
     const lastRoute = usePrevious(route);
@@ -320,10 +290,10 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
                         >
                             {headerView}
                         </OfflineWithFeedback>
-                        {!!accountManagerReportID && isConciergeChatReport(report) && isBannerVisible && (
+                        {!!shouldShowBanner && (
                             <Banner
                                 containerStyles={[styles.mh4, styles.mt4, styles.p4, styles.br2]}
-                                text={chatWithAccountManagerText}
+                                text={bannerText}
                                 onClose={dismissBanner}
                                 onButtonPress={chatWithAccountManager}
                                 shouldShowCloseButton
