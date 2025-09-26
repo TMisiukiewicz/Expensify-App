@@ -1,9 +1,9 @@
 import {PortalHost} from '@gorhom/portal';
 import {useIsFocused} from '@react-navigation/native';
 import {deepEqual} from 'fast-equals';
-import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {memo, useEffect, useMemo, useRef, useState} from 'react';
 import type {FlatList, ViewStyle} from 'react-native';
-import {InteractionManager, View} from 'react-native';
+import {View} from 'react-native';
 import Banner from '@components/Banner';
 import FullPageNotFoundView from '@components/BlockingViews/FullPageNotFoundView';
 import DragAndDropProvider from '@components/DragAndDrop/Provider';
@@ -16,6 +16,7 @@ import ReportActionsSkeletonView from '@components/ReportActionsSkeletonView';
 import ScreenWrapper from '@components/ScreenWrapper';
 import useAccountManagerBanner from '@hooks/useAccountManagerBanner';
 import useCurrentReportID from '@hooks/useCurrentReportID';
+import useDeleteTransactionCleanup from '@hooks/useDeleteTransactionCleanup';
 import useIsReportReadyToDisplay from '@hooks/useIsReportReadyToDisplay';
 import useNetwork from '@hooks/useNetwork';
 import useNewTransactions from '@hooks/useNewTransactions';
@@ -39,7 +40,6 @@ import Navigation from '@libs/Navigation/Navigation';
 import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavigation/types';
 import {getReportOfflinePendingActionAndErrors, isInvoiceReport, isMoneyRequestReport, isOneTransactionThread, isReportTransactionThread} from '@libs/ReportUtils';
 import type {ReportsSplitNavigatorParamList} from '@navigation/types';
-import {clearDeleteTransactionNavigateBackUrl} from '@userActions/Report';
 import ONYXKEYS from '@src/ONYXKEYS';
 import type SCREENS from '@src/SCREENS';
 import HeaderView from './HeaderView';
@@ -229,23 +229,9 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
 
     // eslint-disable-next-line react-compiler/react-compiler
     const lastReportActionIDFromRoute = usePrevious(!firstRender ? reportActionIDFromRoute : undefined);
-    const [deleteTransactionNavigateBackUrl] = useOnyx(ONYXKEYS.NVP_DELETE_TRANSACTION_NAVIGATE_BACK_URL, {canBeMissing: true});
 
-    const clearDeleteTransactionUrl = useCallback(() => {
-        InteractionManager.runAfterInteractions(() => {
-            requestAnimationFrame(() => {
-                clearDeleteTransactionNavigateBackUrl();
-            });
-        });
-    }, []);
-
-    useEffect(() => {
-        if (!isFocused || !deleteTransactionNavigateBackUrl) {
-            return;
-        }
-        // Clear the URL after all interactions are processed to ensure all updates are completed before hiding the skeleton
-        clearDeleteTransactionUrl();
-    }, [isFocused, deleteTransactionNavigateBackUrl, clearDeleteTransactionUrl]);
+    // Delete transaction cleanup
+    useDeleteTransactionCleanup({isFocused});
 
     const actionListValue = useMemo((): ActionListContextType => ({flatListRef, scrollPosition, setScrollPosition}), [scrollPosition]);
 
