@@ -87,7 +87,7 @@ function LongTermsForm() {
         <>
             <CollapsibleSection
                 title={translate('termsStep.longTermsForm.listOfAllFees')}
-                shouldShowSectionBorder
+                sectionBorder={<View style={styles.collapsibleSectionBorder} />}
             >
                 {getLongTermsSections()}
             </CollapsibleSection>

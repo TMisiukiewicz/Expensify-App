@@ -1,3 +1,4 @@
+import type {ReactNode} from 'react';
 import React, {useState} from 'react';
 import type {StyleProp, TextStyle, ViewStyle} from 'react-native';
 import {View} from 'react-native';
@@ -24,11 +25,11 @@ type CollapsibleSectionProps = ChildrenProps & {
     /** Style for the wrapper view */
     wrapperStyle?: StyleProp<ViewStyle>;
 
-    /** Whether or not to show border between section title and expandable items */
-    shouldShowSectionBorder?: boolean;
+    /** Optional element to render between the section title and expandable items */
+    sectionBorder?: ReactNode;
 };
 
-function CollapsibleSection({title, children, titleStyle, textStyle, wrapperStyle, shouldShowSectionBorder}: CollapsibleSectionProps) {
+function CollapsibleSection({title, children, titleStyle, textStyle, wrapperStyle, sectionBorder}: CollapsibleSectionProps) {
     const icons = useMemoizedLazyExpensifyIcons(['DownArrow', 'UpArrow']);
     const theme = useTheme();
     const styles = useThemeStyles();
@@ -64,7 +65,7 @@ function CollapsibleSection({title, children, titleStyle, textStyle, wrapperStyl
                     src={src}
                 />
             </PressableWithFeedback>
-            {!!shouldShowSectionBorder && <View style={styles.collapsibleSectionBorder} />}
+            {sectionBorder}
             <Collapsible isOpened={isExpanded}>
                 <View>{children}</View>
             </Collapsible>
