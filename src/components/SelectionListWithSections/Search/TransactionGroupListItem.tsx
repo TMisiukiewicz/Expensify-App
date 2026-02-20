@@ -4,7 +4,7 @@ import type {OnyxEntry} from 'react-native-onyx';
 // Use the original useOnyx hook to get the real-time data from Onyx and not from the snapshot
 // eslint-disable-next-line no-restricted-imports
 import {useOnyx as originalUseOnyx} from 'react-native-onyx';
-import AnimatedCollapsible from '@components/AnimatedCollapsible';
+import AnimatedCollapsible, {AnimatedCollapsibleToggleButton} from '@components/AnimatedCollapsible';
 import {getButtonRole} from '@components/Button/utils';
 import OfflineWithFeedback from '@components/OfflineWithFeedback';
 import {PressableWithFeedback} from '@components/Pressable';
@@ -531,9 +531,15 @@ function TransactionGroupListItem<TItem extends ListItem>({
                         <AnimatedCollapsible
                             isExpanded={isExpanded}
                             header={getHeader(hovered)}
-                            onPress={onExpandIconPress}
-                            expandButtonStyle={styles.pv4Half}
-                            shouldShowToggleButton={isLargeScreenWidth}
+                            toggleButton={
+                                isLargeScreenWidth ? (
+                                    <AnimatedCollapsibleToggleButton
+                                        isExpanded={isExpanded}
+                                        onPress={onExpandIconPress}
+                                        style={styles.pv4Half}
+                                    />
+                                ) : undefined
+                            }
                         >
                             <TransactionGroupListExpandedItem
                                 showTooltip={showTooltip}

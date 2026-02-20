@@ -12,6 +12,45 @@ import useTheme from '@hooks/useTheme';
 import useThemeStyles from '@hooks/useThemeStyles';
 import CONST from '@src/CONST';
 
+type AnimatedCollapsibleToggleButtonProps = {
+    /** Whether the collapsible is currently expanded */
+    isExpanded: boolean;
+
+    /** Callback for when the button is pressed */
+    onPress: () => void;
+
+    /** Whether the button is disabled */
+    disabled?: boolean;
+
+    /** Additional style for the button */
+    style?: StyleProp<ViewStyle>;
+};
+
+function AnimatedCollapsibleToggleButton({isExpanded, onPress, disabled = false, style}: AnimatedCollapsibleToggleButtonProps) {
+    const theme = useTheme();
+    const styles = useThemeStyles();
+    const expensifyIcons = useMemoizedLazyExpensifyIcons(['UpArrow', 'DownArrow']);
+
+    return (
+        <PressableWithFeedback
+            onPress={onPress}
+            disabled={disabled}
+            style={[styles.p3Half, styles.justifyContentCenter, styles.alignItemsCenter, style]}
+            accessibilityRole={CONST.ROLE.BUTTON}
+            accessibilityLabel={isExpanded ? CONST.ACCESSIBILITY_LABELS.COLLAPSE : CONST.ACCESSIBILITY_LABELS.EXPAND}
+        >
+            {({hovered}) => (
+                <Icon
+                    src={isExpanded ? expensifyIcons.UpArrow : expensifyIcons.DownArrow}
+                    fill={theme.icon}
+                    additionalStyles={!hovered && styles.opacitySemiTransparent}
+                    small
+                />
+            )}
+        </PressableWithFeedback>
+    );
+}
+
 type AnimatedCollapsibleProps = {
     /** Whether the component is expanded */
     isExpanded: boolean;
@@ -37,17 +76,8 @@ type AnimatedCollapsibleProps = {
     /** Style for the content container */
     contentStyle?: StyleProp<ViewStyle>;
 
-    /** Style for the toggle button */
-    expandButtonStyle?: StyleProp<ViewStyle>;
-
-    /** Whether the toggle button is disabled */
-    disabled?: boolean;
-
-    /** Callback for when the toggle button is pressed */
-    onPress: () => void;
-
-    /** Whether to show the toggle button */
-    shouldShowToggleButton?: boolean;
+    /** Optional toggle button to display alongside the header */
+    toggleButton?: ReactNode;
 
     /** Style for the border bottom */
     borderBottomStyle?: StyleProp<ViewStyle>;
@@ -62,15 +92,10 @@ function AnimatedCollapsible({
     style,
     headerStyle,
     contentStyle,
-    expandButtonStyle,
-    onPress,
-    disabled = false,
-    shouldShowToggleButton = true,
+    toggleButton,
     borderBottomStyle,
 }: AnimatedCollapsibleProps) {
-    const theme = useTheme();
     const styles = useThemeStyles();
-    const expensifyIcons = useMemoizedLazyExpensifyIcons(['UpArrow', 'DownArrow']);
     const contentHeight = useSharedValue(0);
     const descriptionHeight = useSharedValue(0);
     const hasExpanded = useSharedValue(isExpanded);
@@ -132,24 +157,7 @@ function AnimatedCollapsible({
         <View style={style}>
             <View style={[headerStyle, styles.flexRow, styles.alignItemsCenter]}>
                 <View style={[styles.flex1]}>{header}</View>
-                {shouldShowToggleButton && (
-                    <PressableWithFeedback
-                        onPress={onPress}
-                        disabled={disabled}
-                        style={[styles.p3Half, styles.justifyContentCenter, styles.alignItemsCenter, expandButtonStyle]}
-                        accessibilityRole={CONST.ROLE.BUTTON}
-                        accessibilityLabel={isExpanded ? CONST.ACCESSIBILITY_LABELS.COLLAPSE : CONST.ACCESSIBILITY_LABELS.EXPAND}
-                    >
-                        {({hovered}) => (
-                            <Icon
-                                src={isExpanded ? expensifyIcons.UpArrow : expensifyIcons.DownArrow}
-                                fill={theme.icon}
-                                additionalStyles={!hovered && styles.opacitySemiTransparent}
-                                small
-                            />
-                        )}
-                    </PressableWithFeedback>
-                )}
+                {toggleButton}
             </View>
             <Animated.View style={descriptionAnimatedStyle}>
                 {!!description && !isExpanded && (
@@ -189,4 +197,5 @@ function AnimatedCollapsible({
     );
 }
 
+export {AnimatedCollapsibleToggleButton};
 export default AnimatedCollapsible;
