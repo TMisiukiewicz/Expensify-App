@@ -1,14 +1,22 @@
 import type {ReactNode} from 'react';
 import React from 'react';
 import type {StyleProp, TextStyle, ViewStyle} from 'react-native';
+import {useMemoizedLazyExpensifyIcons} from '@hooks/useLazyAsset';
+import useLocalize from '@hooks/useLocalize';
 import usePrevious from '@hooks/usePrevious';
 import useResponsiveLayout from '@hooks/useResponsiveLayout';
+import useTheme from '@hooks/useTheme';
 import useThemeStyles from '@hooks/useThemeStyles';
 import CONST from '@src/CONST';
 import type IconAsset from '@src/types/utils/IconAsset';
+import Button from './Button';
 import ConfirmContent from './ConfirmContent';
+import Icon from './Icon';
+import {Close} from './Icon/Expensicons';
 import Modal from './Modal';
 import type BaseModalProps from './Modal/types';
+import {PressableWithoutFeedback} from './Pressable';
+import Tooltip from './Tooltip';
 
 type ConfirmModalProps = {
     /** Title of the modal */
@@ -157,6 +165,9 @@ function ConfirmModal({
     // eslint-disable-next-line rulesdir/prefer-shouldUseNarrowLayout-instead-of-isSmallScreenWidth
     const {isSmallScreenWidth} = useResponsiveLayout();
     const styles = useThemeStyles();
+    const theme = useTheme();
+    const {translate} = useLocalize();
+    const expensifyIcons = useMemoizedLazyExpensifyIcons(['Close']);
 
     // Previous state needed for exiting animation to play correctly.
     const prevVisible = usePrevious(isVisible);
@@ -165,6 +176,29 @@ function ConfirmModal({
     if (!isVisible && !prevVisible) {
         return null;
     }
+
+    const cancelButtonElement = shouldShowCancelButton ? (
+        <Button
+            large
+            onPress={onCancel}
+            text={cancelText || translate('common.no')}
+        />
+    ) : undefined;
+
+    const dismissIconElement = shouldShowDismissIcon ? (
+        <Tooltip text={translate('common.close')}>
+            <PressableWithoutFeedback
+                onPress={onCancel}
+                role={CONST.ROLE.BUTTON}
+                accessibilityLabel={translate('common.close')}
+            >
+                <Icon
+                    fill={theme.icon}
+                    src={Close}
+                />
+            </PressableWithoutFeedback>
+        </Tooltip>
+    ) : undefined;
 
     return (
         <Modal
@@ -185,23 +219,21 @@ function ConfirmModal({
                 /* Disable onConfirm function if the modal is being dismissed, otherwise the confirmation
             function can be triggered multiple times if the user clicks on the button multiple times. */
                 onConfirm={() => (isVisible ? onConfirm() : null)}
-                onCancel={onCancel}
                 confirmText={confirmText}
-                cancelText={cancelText}
                 prompt={prompt}
                 success={success}
                 danger={danger}
                 isVisible={isVisible}
                 shouldDisableConfirmButtonWhenOffline={shouldDisableConfirmButtonWhenOffline}
-                shouldShowCancelButton={shouldShowCancelButton}
+                cancelButton={cancelButtonElement}
                 shouldCenterContent={shouldCenterContent}
                 iconSource={iconSource}
-                contentStyles={isSmallScreenWidth && shouldShowDismissIcon ? styles.mt2 : undefined}
+                contentStyles={isSmallScreenWidth && !!dismissIconElement ? styles.mt2 : undefined}
                 iconFill={iconFill}
                 iconHeight={iconHeight}
                 iconWidth={iconWidth}
                 shouldCenterIcon={shouldCenterIcon}
-                shouldShowDismissIcon={shouldShowDismissIcon}
+                dismissIcon={dismissIconElement}
                 titleContainerStyles={titleContainerStyles}
                 iconAdditionalStyles={iconAdditionalStyles}
                 titleStyles={titleStyles}

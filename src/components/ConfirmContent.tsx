@@ -12,11 +12,8 @@ import type IconAsset from '@src/types/utils/IconAsset';
 import Button from './Button';
 import Header from './Header';
 import Icon from './Icon';
-import {Close} from './Icon/Expensicons';
 import ImageSVG from './ImageSVG';
-import {PressableWithoutFeedback} from './Pressable';
 import Text from './Text';
-import Tooltip from './Tooltip';
 
 type ConfirmContentProps = {
     /** Title of the modal */
@@ -25,14 +22,8 @@ type ConfirmContentProps = {
     /** A callback to call when the form has been submitted */
     onConfirm: () => void;
 
-    /** A callback to call when the form has been closed */
-    onCancel?: () => void;
-
     /** Confirm button text */
     confirmText?: string;
-
-    /** Cancel button text */
-    cancelText?: string;
 
     /** Modal content text/element */
     prompt?: string | ReactNode;
@@ -46,8 +37,8 @@ type ConfirmContentProps = {
     /** Whether we should disable the confirm button when offline */
     shouldDisableConfirmButtonWhenOffline?: boolean;
 
-    /** Whether we should show the cancel button */
-    shouldShowCancelButton?: boolean;
+    /** Cancel button element to render. When provided it will be positioned based on the button stacking layout. */
+    cancelButton?: ReactNode;
 
     /** Icon to display above the title */
     iconSource?: IconAsset;
@@ -67,8 +58,8 @@ type ConfirmContentProps = {
     /** Whether to center the icon / text content */
     shouldCenterContent?: boolean;
 
-    /** Whether to show the dismiss icon */
-    shouldShowDismissIcon?: boolean;
+    /** Dismiss icon element to render in the top-right corner */
+    dismissIcon?: ReactNode;
 
     /** Whether to stack the buttons */
     shouldStackButtons?: boolean;
@@ -107,14 +98,12 @@ type ConfirmContentProps = {
 function ConfirmContent({
     title,
     onConfirm,
-    onCancel = () => {},
     confirmText = '',
-    cancelText = '',
     prompt = '',
     success = true,
     danger = false,
     shouldDisableConfirmButtonWhenOffline = false,
-    shouldShowCancelButton = false,
+    cancelButton,
     iconSource,
     iconFill,
     shouldCenterContent = false,
@@ -126,7 +115,7 @@ function ConfirmContent({
     iconWidth = variables.appModalAppIconSize,
     iconHeight = variables.appModalAppIconSize,
     shouldCenterIcon = false,
-    shouldShowDismissIcon = false,
+    dismissIcon,
     image,
     imageStyles,
     titleContainerStyles,
@@ -135,8 +124,8 @@ function ConfirmContent({
     isConfirmLoading,
 }: ConfirmContentProps) {
     const styles = useThemeStyles();
-    const {translate} = useLocalize();
     const theme = useTheme();
+    const {translate} = useLocalize();
     const {isOffline} = useNetwork();
 
     const isCentered = shouldCenterContent;
@@ -156,22 +145,7 @@ function ConfirmContent({
             )}
 
             <View style={[styles.m5, contentStyles]}>
-                {shouldShowDismissIcon && (
-                    <View style={styles.alignItemsEnd}>
-                        <Tooltip text={translate('common.close')}>
-                            <PressableWithoutFeedback
-                                onPress={onCancel}
-                                role={CONST.ROLE.BUTTON}
-                                accessibilityLabel={translate('common.close')}
-                            >
-                                <Icon
-                                    fill={theme.icon}
-                                    src={Close}
-                                />
-                            </PressableWithoutFeedback>
-                        </Tooltip>
-                    </View>
-                )}
+                {!!dismissIcon && <View style={styles.alignItemsEnd}>{dismissIcon}</View>}
                 <View style={isCentered ? [styles.alignItemsCenter, styles.mb6] : []}>
                     {!!iconSource && (
                         <View style={[shouldCenterIcon ? styles.justifyContentCenter : null, styles.flexRow, styles.mb3]}>
@@ -195,14 +169,7 @@ function ConfirmContent({
 
                 {shouldStackButtons ? (
                     <>
-                        {shouldShowCancelButton && shouldReverseStackedButtons && (
-                            <Button
-                                style={[styles.mt4, styles.noSelect]}
-                                onPress={onCancel}
-                                large
-                                text={cancelText || translate('common.no')}
-                            />
-                        )}
+                        {!!cancelButton && shouldReverseStackedButtons && <View style={[styles.mt4]}>{cancelButton}</View>}
                         <Button
                             success={success}
                             danger={danger}
@@ -216,24 +183,11 @@ function ConfirmContent({
                             isDisabled={isOffline && shouldDisableConfirmButtonWhenOffline}
                             isLoading={isConfirmLoading}
                         />
-                        {shouldShowCancelButton && !shouldReverseStackedButtons && (
-                            <Button
-                                style={[styles.mt3, styles.noSelect]}
-                                onPress={onCancel}
-                                large
-                                text={cancelText || translate('common.no')}
-                            />
-                        )}
+                        {!!cancelButton && !shouldReverseStackedButtons && <View style={[styles.mt3]}>{cancelButton}</View>}
                     </>
                 ) : (
                     <View style={[styles.flexRow, styles.gap4]}>
-                        {shouldShowCancelButton && (
-                            <Button
-                                style={[styles.noSelect, styles.flex1]}
-                                onPress={onCancel}
-                                text={cancelText || translate('common.no')}
-                            />
-                        )}
+                        {!!cancelButton && <View style={[styles.flex1]}>{cancelButton}</View>}
                         <Button
                             success={success}
                             danger={danger}
