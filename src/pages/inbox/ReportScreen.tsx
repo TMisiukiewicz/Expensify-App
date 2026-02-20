@@ -10,6 +10,7 @@ import type {FlatList, ViewStyle} from 'react-native';
 import {Animated, DeviceEventEmitter, InteractionManager, View} from 'react-native';
 import type {OnyxCollection, OnyxEntry} from 'react-native-onyx';
 import Banner from '@components/Banner';
+import Button from '@components/Button';
 import FullPageNotFoundView from '@components/BlockingViews/FullPageNotFoundView';
 import DragAndDropProvider from '@components/DragAndDrop/Provider';
 import MoneyReportHeader from '@components/MoneyReportHeader';
@@ -1058,11 +1059,15 @@ function ReportScreen({route, navigation, isInSidePanel = false}: ReportScreenPr
                                         containerStyles={[styles.mh4, styles.mt4, styles.p4, styles.br2]}
                                         text={chatWithAccountManagerText}
                                         onClose={dismissBanner}
-                                        onButtonPress={chatWithAccountManager}
-                                        shouldShowCloseButton
                                         icon={expensifyIcons.Lightbulb}
-                                        shouldShowIcon
-                                        shouldShowButton
+                                        button={
+                                            <Button
+                                                success
+                                                style={[styles.pr3]}
+                                                text={translate('common.chatNow')}
+                                                onPress={chatWithAccountManager}
+                                            />
+                                        }
                                     />
                                 )}
                                 <View style={[styles.flex1, styles.flexRow]}>

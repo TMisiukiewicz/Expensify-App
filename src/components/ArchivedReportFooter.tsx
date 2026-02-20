@@ -11,6 +11,7 @@ import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import type {PersonalDetailsList, Report} from '@src/types/onyx';
 import {getEmptyObject} from '@src/types/utils/EmptyObject';
+import {useMemoizedLazyExpensifyIcons} from '@hooks/useLazyAsset';
 import Banner from './Banner';
 
 type ArchivedReportFooterProps = {
@@ -23,6 +24,7 @@ type ArchivedReportFooterProps = {
 function ArchivedReportFooter({report, currentUserAccountID}: ArchivedReportFooterProps) {
     const styles = useThemeStyles();
     const {translate} = useLocalize();
+    const expensifyIcons = useMemoizedLazyExpensifyIcons(['Exclamation']);
 
     const [personalDetails = getEmptyObject<PersonalDetailsList>()] = useOnyx(ONYXKEYS.PERSONAL_DETAILS_LIST, {canBeMissing: false});
     const [reportClosedAction] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.reportID}`, {canEvict: false, selector: getLastClosedReportAction, canBeMissing: true});
@@ -67,7 +69,7 @@ function ArchivedReportFooter({report, currentUserAccountID}: ArchivedReportFoot
             containerStyles={[styles.chatFooterBanner]}
             text={text}
             shouldRenderHTML={shouldRenderHTML}
-            shouldShowIcon
+            icon={expensifyIcons.Exclamation}
         />
     );
 }

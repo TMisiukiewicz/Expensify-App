@@ -238,7 +238,6 @@ function ReportFooter({
                             containerStyles={[styles.chatFooterBanner]}
                             text={translate('adminOnlyCanPost')}
                             icon={expensifyIcons.Lightbulb}
-                            shouldShowIcon
                         />
                     )}
                     {!shouldUseNarrowLayout && (

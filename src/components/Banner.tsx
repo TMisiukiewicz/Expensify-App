@@ -9,7 +9,6 @@ import useThemeStyles from '@hooks/useThemeStyles';
 import getButtonState from '@libs/getButtonState';
 import CONST from '@src/CONST';
 import type IconAsset from '@src/types/utils/IconAsset';
-import Button from './Button';
 import Hoverable from './Hoverable';
 import Icon from './Icon';
 import PressableWithFeedback from './Pressable/PressableWithFeedback';
@@ -24,19 +23,13 @@ type BannerProps = {
     /** Content to display in the banner. */
     content?: React.ReactNode;
 
-    /** The icon asset to display to the left of the text */
+    /** The icon asset to display to the left of the text. When provided, the icon is shown. */
     icon?: IconAsset | null;
-
-    /** Should this component render the left-aligned exclamation icon? */
-    shouldShowIcon?: boolean;
-
-    /** Should this component render a close button? */
-    shouldShowCloseButton?: boolean;
 
     /** Should this component render the text as HTML? */
     shouldRenderHTML?: boolean;
 
-    /** Callback called when the close button is pressed */
+    /** Callback called when the close button is pressed. When provided, a close button is shown. */
     onClose?: () => void;
 
     /** Callback called when the message is pressed */
@@ -48,34 +41,16 @@ type BannerProps = {
     /** Styles to be assigned to the Banner text */
     textStyles?: StyleProp<TextStyle>;
 
-    /** Whether to display button in the banner */
-    shouldShowButton?: boolean;
-
-    /** Callback called when pressing the button */
-    onButtonPress?: () => void;
+    /** Optional action button to display in the banner */
+    button?: React.ReactNode;
 };
 
-function Banner({
-    text,
-    content,
-    icon,
-    onClose,
-    onPress,
-    onButtonPress,
-    containerStyles,
-    textStyles,
-    shouldRenderHTML = false,
-    shouldShowIcon = false,
-    shouldShowCloseButton = false,
-    shouldShowButton = false,
-}: BannerProps) {
+function Banner({text, content, icon, onClose, onPress, containerStyles, textStyles, shouldRenderHTML = false, button}: BannerProps) {
     const theme = useTheme();
     const styles = useThemeStyles();
     const StyleUtils = useStyleUtils();
     const {translate} = useLocalize();
-    const expensifyIcons = useMemoizedLazyExpensifyIcons(['Exclamation', 'Close']);
-
-    const displayIcon = icon ?? expensifyIcons.Exclamation;
+    const expensifyIcons = useMemoizedLazyExpensifyIcons(['Close']);
 
     return (
         <Hoverable>
@@ -95,10 +70,10 @@ function Banner({
                         ]}
                     >
                         <View style={[styles.flexRow, styles.flex1, styles.mw100, styles.alignItemsCenter]}>
-                            {shouldShowIcon && !!displayIcon && (
+                            {!!icon && (
                                 <View style={[styles.mr3]}>
                                     <Icon
-                                        src={displayIcon}
+                                        src={icon}
                                         fill={StyleUtils.getIconFillColor(getButtonState(shouldHighlight))}
                                     />
                                 </View>
@@ -118,15 +93,8 @@ function Banner({
                                     </Text>
                                 ))}
                         </View>
-                        {shouldShowButton && (
-                            <Button
-                                success
-                                style={[styles.pr3]}
-                                text={translate('common.chatNow')}
-                                onPress={onButtonPress}
-                            />
-                        )}
-                        {shouldShowCloseButton && !!onClose && (
+                        {button}
+                        {!!onClose && (
                             <Tooltip text={translate('common.close')}>
                                 <PressableWithFeedback
                                     onPress={onClose}

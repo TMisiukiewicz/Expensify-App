@@ -52,7 +52,6 @@ function SystemChatReportFooterMessage() {
     return (
         <Banner
             containerStyles={[styles.chatFooterBanner]}
-            shouldShowIcon
             icon={expensifyIcons.Lightbulb}
             content={
                 <Text
